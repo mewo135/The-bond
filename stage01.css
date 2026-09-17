@@ -1,0 +1,267 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    background-color: black;
+    overflow-x: hidden;
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE / old Edge */
+}
+
+/* Chrome, Safari, other Webkit/Blink browsers */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+@font-face {
+    font-family: "Ballet";
+    src: url("Ballet/Ballet_24pt-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* ===== THEME COLORS (matches the rest of the project) ===== */
+body.dark {
+    background-color: black;
+    --text-color: #ebe9ff;
+    --glow-color: #ebe9ff;
+}
+
+body.light {
+    background-color: #fffaf5;
+    --text-color: #605889;
+    --glow-color: #605889;
+}
+
+/* ===== AMBIENT BACKGROUND DUST ===== */
+#ambientCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* ===== VERSE / SCROLL SECTIONS ===== */
+.verse {
+    position: relative;
+    height: 250vh;
+}
+
+.verse-inner {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.end-spacer {
+    height: 50vh;
+}
+
+/* ===== LINES =====
+   Each .line is positioned to match the prototype (top/left inline
+   in the HTML, easy to nudge per line). Inside, .word spans hold the
+   actual words — style/size those individually below if needed. */
+.line {
+    position: absolute;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    white-space: nowrap;
+}
+
+/* used for "woven so deep" — pulled close together to read almost
+   like one flowing word, matching the prototype's "wovensodeep" look */
+.line.tight {
+    gap: 2px;
+}
+
+.word {
+    position: relative;
+    color: var(--text-color);
+    text-shadow: 0 0 7px var(--glow-color);
+    will-change: opacity;
+    display: inline-block;
+}
+
+.accent {
+    font-family: "Ballet", cursive;
+    font-size: 133pt;
+    line-height: 1;
+}
+
+.accent.small {
+    font-size: 70pt;
+}
+
+.regular {
+    font-family: "ebrima", sans-serif;
+    font-size: 48pt;
+}
+
+.regular.small {
+    font-size: 30pt;
+}
+
+/* ===== PARTICLE CANVAS (dissolve effect) ===== */
+.particle-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* ===== THEME TOGGLE ===== */
+.theme-toggle-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 100;
+}
+
+.toggle-checkbox {
+    display: none;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    width: 60px;
+    height: 30px;
+    background-color: transparent;
+    border: 2px solid var(--text-color);
+    border-radius: 18px;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.3s ease;
+}
+
+.toggle-circle {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    background-color: var(--text-color);
+    border-radius: 50%;
+    top: 2px;
+    left: 3px;
+    transition: left 0.3s ease, background-color 0.3s ease;
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-circle {
+    left: 33px;
+}
+
+/* ===== SKIP PROMPT (appears once the last verse has fully dissolved) ===== */
+#skipPrompt {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: "ebrima", sans-serif;
+    font-size: 1.6rem;
+    color: var(--text-color);
+    text-shadow: 0 0 7px var(--glow-color);
+    cursor: pointer;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+
+#skipPrompt.visible {
+    opacity: 1;
+    pointer-events: auto;
+    animation: fadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ================================================================
+   PER-WORD OVERRIDES
+   id = "{verse number}.{word index in that verse}"
+   Escaped for CSS (can't start a selector with a digit):
+   id="1.1" -> #\31\.1   id="2.13" -> #\32\.13
+   id="3.9" -> #\33\.9   id="4.12" -> #\34\.12
+
+   Use these mainly for font-size tweaks (position is usually set on
+   the parent .line instead). If you want to pull ONE word off its
+   line entirely, add "position: absolute; top: X%; left: Y%;" here
+   — it'll be positioned relative to .verse-inner instead of the line.
+   ================================================================ */
+
+/* ===== Verse 1 — per-word overrides (10 words) ===== */
+#\31\.1 { /* "a" */ }
+#\31\.2 { /* "flower" */ }
+#\31\.3 { /* "opens," */ }
+#\31\.4 { /* "already" */ }
+#\31\.5 { /* "closing," */ }
+#\31\.6 { /* "two" */ }
+#\31\.7 { /* "moments" */ }
+#\31\.8 { /* "holding" */ }
+#\31\.9 { /* "one" */ }
+#\31\.10 { /* "hand." */ }
+
+/* ===== Verse 2 — per-word overrides (22 words) ===== */
+#\32\.1 { /* "Death" */ }
+#\32\.2 { /* "is" */ }
+#\32\.3 { /* "not" */ }
+#\32\.4 { /* "a" */ }
+#\32\.5 { /* "thief." */ }
+#\32\.6 { /* "It" */ }
+#\32\.7 { /* "was" */ }
+#\32\.8 { /* "there" */ }
+#\32\.9 { /* "from" */ }
+#\32\.10 { /* "the" */ }
+#\32\.11 { /* "first" */ }
+#\32\.12 { /* "breath," */ }
+#\32\.13 { /* "woven" */ }
+#\32\.14 { /* "so" */ }
+#\32\.15 { /* "deep" */ }
+#\32\.16 { /* "you" */ }
+#\32\.17 { /* "cannot" */ }
+#\32\.18 { /* "loosen" */ }
+#\32\.19 { /* "it" */ }
+#\32\.20 { /* "without" */ }
+#\32\.21 { /* "unraveling" */ }
+#\32\.22 { /* "life." */ }
+
+/* ===== Verse 3 — per-word overrides (9 words) ===== */
+#\33\.1 { /* "So" */ }
+#\33\.2 { /* "the" */ }
+#\33\.3 { /* "question" */ }
+#\33\.4 { /* "was" */ }
+#\33\.5 { /* "never" */ }
+#\33\.6 { /* "how" */ }
+#\33\.7 { /* "to" */ }
+#\33\.8 { /* "escape" */ }
+#\33\.9 { /* "death," */ }
+
+/* ===== Verse 4 — per-word overrides (12 words) ===== */
+#\34\.1 { /* "but" */ }
+#\34\.2 { /* "how" */ }
+#\34\.3 { /* "to" */ }
+#\34\.4 { /* "hold" */ }
+#\34\.5 { /* "what" */ }
+#\34\.6 { /* "we" */ }
+#\34\.7 { /* "already" */ }
+#\34\.8 { /* "carry," */ }
+#\34\.9 { /* "life" */ }
+#\34\.10 { /* "and" */ }
+#\34\.11 { /* "its" */ }
+#\34\.12 { /* "shadow." */ }
