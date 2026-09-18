@@ -8,34 +8,32 @@
     <link rel="stylesheet" href="https://use.typekit.net/exh4qsk.css">
 </head>
 <body class="dark">
+    <a href="index.html" id="homeNav">
+        <img id="titleNav" src="assets/title.svg" alt="The Bond - back to home">
+    </a>
     <canvas id="ambientCanvas"></canvas>
-
-    <div class="theme-toggle-container">
-        <input type="checkbox" id="themeToggle" class="toggle-checkbox">
-        <label for="themeToggle" class="toggle-label">
-            <span class="toggle-circle"></span>
-        </label>
-    </div>
 
     <section class="verse" id="verse1">
         <div class="verse-inner">
-            <div class="line" style="top:20%; left:8%;">
+            <div class="frame">
+            <div class="line pos-v1-l1">
                 <span class="word regular" id="1.1">a</span>
                 <span class="word accent" id="1.2">flower</span>
                 <span class="word regular" id="1.3">opens,</span>
             </div>
-            <div class="line" style="top:30%; left:14%;">
+            <div class="line pos-v1-l2">
                 <span class="word regular" id="1.4">already</span>
                 <span class="word regular" id="1.5">closing,</span>
             </div>
-            <div class="line" style="top:45%; left:45%;">
-                <span class="word accent small" id="1.6">two</span>
-                <span class="word accent small" id="1.7">moments</span>
+            <div class="line pos-v1-l3">
+                <span class="word accent" id="1.6">two</span>
+                <span class="word accent" id="1.7">moments</span>
             </div>
-            <div class="line" style="top:58%; left:62%;">
+            <div class="line pos-v1-l4">
                 <span class="word regular" id="1.8">holding</span>
                 <span class="word regular" id="1.9">one</span>
-                <span class="word regular" id="1.10">hand.</span>
+                <span class="word regular" id="1.10">hand</span>
+            </div>
             </div>
             <canvas class="particle-canvas"></canvas>
         </div>
@@ -43,16 +41,17 @@
 
     <section class="verse" id="verse2">
         <div class="verse-inner">
-            <div class="line" style="top:12%; left:8%;">
+            <div class="frame">
+            <div class="line pos-v2-l1">
                 <span class="word accent" id="2.1">Death</span>
             </div>
-            <div class="line" style="top:24%; left:16%;">
+            <div class="line pos-v2-l2">
                 <span class="word regular" id="2.2">is</span>
                 <span class="word regular" id="2.3">not</span>
                 <span class="word regular" id="2.4">a</span>
-                <span class="word regular" id="2.5">thief.</span>
+                <span class="word regular" id="2.5">thief</span>
             </div>
-            <div class="line" style="top:42%; left:38%;">
+            <div class="line pos-v2-l3">
                 <span class="word regular" id="2.6">It</span>
                 <span class="word regular" id="2.7">was</span>
                 <span class="word regular" id="2.8">there</span>
@@ -61,19 +60,20 @@
                 <span class="word accent small" id="2.11">first</span>
                 <span class="word accent small" id="2.12">breath,</span>
             </div>
-            <div class="line tight" style="top:60%; left:28%;">
-                <span class="word accent small" id="2.13">woven</span>
-                <span class="word accent small" id="2.14">so</span>
-                <span class="word accent small" id="2.15">deep</span>
+            <div class="line tight pos-v2-l4">
+                <span class="word accent" id="2.13">woven</span>
+                <span class="word accent" id="2.14">so</span>
+                <span class="word accent" id="2.15">deep</span>
             </div>
-            <div class="line" style="top:76%; left:8%;">
+            <div class="line pos-v2-l5">
                 <span class="word regular" id="2.16">you</span>
                 <span class="word regular" id="2.17">cannot</span>
                 <span class="word regular" id="2.18">loosen</span>
                 <span class="word regular" id="2.19">it</span>
                 <span class="word regular" id="2.20">without</span>
                 <span class="word regular" id="2.21">unraveling</span>
-                <span class="word regular" id="2.22">life.</span>
+                <span class="word regular" id="2.22">life</span>
+            </div>
             </div>
             <canvas class="particle-canvas"></canvas>
         </div>
@@ -82,16 +82,18 @@
     <!-- "So the question was never how to escape death," -->
     <section class="verse" id="verse3">
         <div class="verse-inner">
-            <div class="line" style="top:45%; left:8%;">
+            <div class="frame">
+            <div class="line pos-v3-l1">
                 <span class="word regular" id="3.1">So</span>
                 <span class="word regular" id="3.2">the</span>
-                <span class="word accent small" id="3.3">question</span>
+                <span class="word accent" id="3.3">question</span>
                 <span class="word regular" id="3.4">was</span>
                 <span class="word regular" id="3.5">never</span>
                 <span class="word regular" id="3.6">how</span>
                 <span class="word regular" id="3.7">to</span>
                 <span class="word regular" id="3.8">escape</span>
                 <span class="word regular" id="3.9">death,</span>
+            </div>
             </div>
             <canvas class="particle-canvas"></canvas>
         </div>
@@ -100,29 +102,40 @@
     <!-- "but how to hold what we already carry, life and its shadow." -->
     <section class="verse" id="verse4">
         <div class="verse-inner">
-            <div class="line" style="top:15%; left:10%;">
+            <div class="frame">
+            <div class="line pos-v4-l1">
                 <span class="word regular" id="4.1">but</span>
                 <span class="word regular" id="4.2">how</span>
                 <span class="word regular" id="4.3">to</span>
                 <span class="word regular" id="4.4">hold</span>
             </div>
-            <div class="line" style="top:22%; left:20%;">
+            <div class="line pos-v4-l2">
                 <span class="word regular" id="4.5">what</span>
                 <span class="word regular" id="4.6">we</span>
                 <span class="word regular" id="4.7">already</span>
             </div>
-            <div class="line" style="top:24%; left:40%;">
+            <div class="line pos-v4-l3">
                 <span class="word accent" id="4.8">carry,</span>
             </div>
-            <div class="line" style="top:62%; left:38%;">
+            <div class="line pos-v4-l4">
                 <span class="word accent" id="4.9">life</span>
                 <span class="word regular small" id="4.10">and</span>
                 <span class="word accent" id="4.11">its</span>
-                <span class="word accent" id="4.12">shadow.</span>
+                <span class="word accent" id="4.12">shadow</span>
+            </div>
             </div>
             <canvas class="particle-canvas"></canvas>
         </div>
     </section>
+
+        <div class="theme-toggle-container">
+            <input type="checkbox" id="themeToggle" class="toggle-checkbox">
+            <label for="themeToggle" class="toggle-label">
+                <img class="toggle-icon toggle-icon-light" src="assets/lighticon.svg" alt="light">
+                <img class="toggle-icon toggle-icon-dark" src="assets/darkicon.svg" alt="dark">
+                <span class="toggle-circle"></span>
+            </label>
+        </div>
 
     <div class="end-spacer"></div>
 

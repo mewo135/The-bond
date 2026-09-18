@@ -102,16 +102,11 @@ input[type="range"] { width: 100%; }
 #titleNav {
     width: 180px;
     height: auto;
-    filter: drop-shadow(0 0 7px #ebe9ff);
     transition: opacity 0.3s ease;
 }
 
 #titleNav:hover {
     opacity: 0.7;
-}
-
-body.light #titleNav {
-    filter: drop-shadow(0 0 7px #605889);
 }
 
 /* THEME TOGGLE */

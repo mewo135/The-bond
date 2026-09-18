@@ -1,5 +1,5 @@
 // ============================================================
-// REFLECTION 1 — scroll-driven poem.
+// STAGE 01 — scroll-driven poem.
 // Each verse: words appear ONE BY ONE in order while scrolling
 // down (fade-in phase) -> hold, fully visible -> dissolve into
 // particles. Scrolling back up reverses everything automatically,
@@ -8,17 +8,41 @@
 // ============================================================
 
 const PHASE = {
-    fadeInEnd: 0.30,   // 0        -> 0.30 : words appear one by one
-    holdEnd: 0.60,     // 0.30     -> 0.60 : fully visible, readable
-    dissolveEnd: 1.0   // 0.60     -> 1.00 : dissolves into particles
+    fadeInEnd: 0.80,   // 0        -> 0.80 : words appear one by one
+    holdEnd: 0.85,     // 0.80     -> 0.85 : giữ ngắn
+    dissolveEnd: 1.0   // 0.85     -> 1.00 : tan từ từ (khoảng rộng hơn, 15% thay vì 8%)
 };
+// Safety net: if fadeInEnd is ever pushed past holdEnd (e.g. testing
+// a "chỉ hiện chữ, không dissolve" setup), auto-correct holdEnd so
+// text-fade and particle-scatter never fall out of sync again.
+if (PHASE.fadeInEnd > PHASE.holdEnd) PHASE.holdEnd = PHASE.fadeInEnd;
 
-const REVEAL_OVERLAP = 2.0;    // >1 = words' fade-ins overlap a little (smoother than a strict typewriter)
-const PARTICLE_STEP = 3;       // sample every Nth pixel (lower = more particles = slower)
+const REVEAL_OVERLAP = 1.2;    // >1 = words' fade-ins overlap a little; lower = more distinctly one-by-one
+const PARTICLE_STEP = 8;       // sample every Nth pixel (bigger = sparser + nhẹ hơn)
 const PARTICLE_MAX_DIST = 220; // how far a particle can drift at full dissolve
+const SCROLL_SMOOTHING = 0.06; // 0-1, how fast displayed progress catches up to raw scroll (lower = smoother/slower/laggier, higher = snappier/choppier)
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+// ------------------------------------------------------------
+// Frame scaling — fixed 1920x1080 design frame, scaled uniformly
+// to fit any screen (see .frame in the CSS).
+// ------------------------------------------------------------
+const FRAME_WIDTH = 1920;
+const FRAME_HEIGHT = 1080;
+
+function updateFrameScale() {
+    let scale = Math.min(window.innerWidth / FRAME_WIDTH, window.innerHeight / FRAME_HEIGHT);
+    // Snap to exactly 1 when the window is very close to the native
+    // 1920x1080 design size (e.g. taskbar/browser chrome eating a few
+    // px even in "fullscreen") — avoids a tiny, confusing scale-down
+    // on the exact screen this was designed on.
+    if (scale > 0.97 && scale < 1.03) scale = 1;
+    document.documentElement.style.setProperty('--frame-scale', scale);
+}
+
+updateFrameScale(); // run immediately, don't wait for fonts/init
 
 // ------------------------------------------------------------
 // One VerseController per .verse section.
@@ -50,8 +74,6 @@ class VerseController {
         sample.height = h;
         const sctx = sample.getContext('2d');
 
-        // Sample using the current theme color so the offscreen text
-        // shape matches what's on screen...
         const shapeColor = getComputedStyle(document.body).getPropertyValue('--text-color').trim() || '#ebe9ff';
         sctx.fillStyle = shapeColor;
         sctx.textBaseline = 'alphabetic';
@@ -96,8 +118,10 @@ class VerseController {
     }
 
     // Pinned-scroll progress: 0 when this section starts being
-    // pinned, 1 right before it releases.
-    computeProgress() {
+    // pinned, 1 right before it releases. This is the RAW value —
+    // it jumps around exactly with scroll input (choppy with mouse
+    // wheel notches). update() below smooths it out.
+    computeRawProgress() {
         const rect = this.section.getBoundingClientRect();
         const vh = window.innerHeight;
         const scrollableDist = this.section.offsetHeight - vh;
@@ -109,7 +133,9 @@ class VerseController {
     // Opacity of one word, given the verse's overall progress.
     // - During fadeIn phase: words light up in sequence (index order).
     // - During hold phase: fully visible.
-    // - During dissolve phase: all fade out together (particles take over).
+    // - During dissolve phase: text drops out FAST (first 25% of the
+    //   dissolve window) so it doesn't sit visually on top of the
+    //   particles for the whole dissolve.
     wordOpacity(progress, index, total) {
         if (progress <= PHASE.fadeInEnd) {
             const duration = Math.max((PHASE.fadeInEnd / total) * REVEAL_OVERLAP, 0.001);
@@ -119,7 +145,9 @@ class VerseController {
         } else if (progress <= PHASE.holdEnd) {
             return 1;
         } else {
-            return lerp(1, 0, (progress - PHASE.holdEnd) / (PHASE.dissolveEnd - PHASE.holdEnd));
+            const dissolveT = (progress - PHASE.holdEnd) / (PHASE.dissolveEnd - PHASE.holdEnd);
+            const TEXT_DROP_FRACTION = 0.25; // text is fully gone by 25% into the dissolve window
+            return lerp(1, 0, clamp01(dissolveT / TEXT_DROP_FRACTION));
         }
     }
 
@@ -147,7 +175,10 @@ class VerseController {
         if (scatterT <= 0 || !this.particles) return;
 
         ctx.fillStyle = this.particleColor || '#ebe9ff';
-        const alpha = 1 - scatterT;
+        // Stays fully visible a bit longer, then fades toward the end
+        // of the scatter — reads more like dust drifting off than an
+        // even linear fade the whole way.
+        const alpha = 1 - scatterT; // linear fade — đều đặn, từ từ suốt cả quá trình tan
 
         this.particles.forEach(pt => {
             const x = pt.hx + pt.dx * scatterT;
@@ -160,14 +191,22 @@ class VerseController {
         ctx.globalAlpha = 1;
     }
 
+    // Called every animation frame (not just on scroll events).
+    // this.progress smoothly chases the raw scroll-based progress —
+    // this is what makes the reveal/dissolve feel buttery instead
+    // of stepping in chunks with each scroll tick.
     update() {
-        this.progress = this.computeProgress();
+        const raw = this.computeRawProgress();
+        this.progress = lerp(this.progress, raw, SCROLL_SMOOTHING);
+        // snap once very close, so it doesn't asymptotically creep forever
+        if (Math.abs(this.progress - raw) < 0.0008) this.progress = raw;
         this.render();
     }
 }
 
 // ------------------------------------------------------------
-// Ambient floating dust in the background (decorative only).
+// Ambient sparkle particles (nền) — các chấm sáng trôi lên, độ
+// sáng nhấp nháy (twinkle) theo hình sin, tạo cảm giác lấp lánh.
 // Plain fills, no canvas filter (filter-blur on canvas is
 // unreliable across browsers — avoided project-wide).
 // ------------------------------------------------------------
@@ -175,25 +214,31 @@ const ambientCanvas = document.getElementById('ambientCanvas');
 const actx = ambientCanvas.getContext('2d');
 let ambientDots = [];
 
-function initAmbient() {
-    resizeAmbient();
-    ambientDots = [];
-    const count = 25;
-    for (let i = 0; i < count; i++) {
-        ambientDots.push({
-            x: Math.random() * ambientCanvas.width,
-            y: Math.random() * ambientCanvas.height,
-            r: 2 + Math.random() * 2.5,
-            speed: 0.15 + Math.random() * 0.25,
-            drift: (Math.random() - 0.5) * 0.3,
-            phase: Math.random() * Math.PI * 2
-        });
-    }
-}
+const SPARKLE_COUNT = 25;           // số lượng hạt — tăng/giảm tuỳ ý (giữ nhẹ, tránh lag)
+const SPARKLE_MIN_SIZE = 1.5;
+const SPARKLE_MAX_SIZE = 3.5;
+const SPARKLE_MIN_SPEED = 0.15;     // tốc độ trôi lên (px/frame)
+const SPARKLE_MAX_SPEED = 0.45;
+const SPARKLE_TWINKLE_SPEED = 0.02; // tốc độ nhấp nháy sáng/tối
 
 function resizeAmbient() {
     ambientCanvas.width = window.innerWidth;
     ambientCanvas.height = window.innerHeight;
+}
+
+function initAmbient() {
+    resizeAmbient();
+    ambientDots = [];
+    for (let i = 0; i < SPARKLE_COUNT; i++) {
+        ambientDots.push({
+            x: Math.random() * ambientCanvas.width,
+            y: Math.random() * ambientCanvas.height,
+            r: SPARKLE_MIN_SIZE + Math.random() * (SPARKLE_MAX_SIZE - SPARKLE_MIN_SIZE),
+            speed: SPARKLE_MIN_SPEED + Math.random() * (SPARKLE_MAX_SPEED - SPARKLE_MIN_SPEED),
+            drift: (Math.random() - 0.5) * 0.3,
+            phase: Math.random() * Math.PI * 2 // lệch pha để không nhấp nháy đồng loạt
+        });
+    }
 }
 
 function drawAmbient() {
@@ -204,7 +249,7 @@ function drawAmbient() {
     ambientDots.forEach(d => {
         d.y -= d.speed;
         d.x += d.drift;
-        d.phase += 0.02;
+        d.phase += SPARKLE_TWINKLE_SPEED;
         if (d.y < -10) {
             d.y = ambientCanvas.height + 10;
             d.x = Math.random() * ambientCanvas.width;
@@ -224,13 +269,6 @@ function drawAmbient() {
 // Skip prompt — appears once the last verse has fully dissolved
 // (its own scroll progress reaches ~1), same "Press E / Enter"
 // pattern as the landing page. Pressing E/Enter navigates on.
-//
-// NOTE: this checks the last verse's PROGRESS value (0->1), not
-// getBoundingClientRect() on the whole 250vh section — because of
-// how position:sticky unpins, waiting for the section to fully
-// leave the viewport means an extra ~100vh of "dead" scrolling
-// after the text has already dissolved, making the prompt feel
-// like it never shows up. Progress-based = shows immediately.
 // ------------------------------------------------------------
 const skipPrompt = document.getElementById('skipPrompt');
 const NEXT_STAGE_URL = './stage02.html'; // change if this should point elsewhere
@@ -260,16 +298,14 @@ skipPrompt.addEventListener('click', () => {
 // Boot
 // ------------------------------------------------------------
 let verses = [];
-let ticking = false;
 
-function onScroll() {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-        verses.forEach(v => v.update());
-        checkSkipPromptVisibility();
-        ticking = false;
-    });
+// Runs every animation frame (not just on scroll events) so the
+// per-verse smoothing in VerseController.update() actually has
+// something continuous to interpolate against.
+function mainLoop() {
+    verses.forEach(v => v.update());
+    checkSkipPromptVisibility();
+    requestAnimationFrame(mainLoop);
 }
 
 async function init() {
@@ -279,6 +315,8 @@ async function init() {
         // continue anyway if the font loading API isn't available
     }
 
+    updateFrameScale(); // must run BEFORE buildParticles, so words are sampled at their final on-screen position
+
     verses = Array.from(document.querySelectorAll('.verse')).map(el => new VerseController(el));
     verses.forEach(v => v.buildParticles());
     verses.forEach(v => v.update());
@@ -287,8 +325,10 @@ async function init() {
     requestAnimationFrame(drawAmbient);
     checkSkipPromptVisibility();
 
-    window.addEventListener('scroll', onScroll, { passive: true });
+    requestAnimationFrame(mainLoop); // continuous loop, replaces scroll-event-only updates
+
     window.addEventListener('resize', () => {
+        updateFrameScale();
         resizeAmbient();
         verses.forEach(v => v.buildParticles());
         verses.forEach(v => v.update());
@@ -299,19 +339,27 @@ async function init() {
 // Theme toggle
 // ------------------------------------------------------------
 const themeToggleEl = document.getElementById('themeToggle');
+const titleNav = document.getElementById('titleNav');
 const body = document.body;
 const savedTheme = localStorage.getItem('theme') || 'dark';
 body.classList.remove('dark', 'light');
 body.classList.add(savedTheme);
 themeToggleEl.checked = savedTheme === 'light';
+updateTitleNav();
 
 themeToggleEl.addEventListener('change', () => {
     const isLight = themeToggleEl.checked;
     body.classList.toggle('dark', !isLight);
     body.classList.toggle('light', isLight);
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    updateTitleNav();
     verses.forEach(v => v.buildParticles()); // re-sample particle color for the new theme
     verses.forEach(v => v.update());
 });
+
+function updateTitleNav() {
+    const isLight = body.classList.contains('light');
+    titleNav.src = isLight ? 'assets/title-light.svg' : 'assets/title.svg';
+}
 
 init();
