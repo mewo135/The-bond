@@ -295,6 +295,15 @@ skipPrompt.addEventListener('click', () => {
 });
 
 // ------------------------------------------------------------
+// Scroll hint (mũi tên + "Scroll down") — ẩn ngay khi người dùng
+// bắt đầu cuộn, hiện lại nếu cuộn về đúng đỉnh trang.
+// ------------------------------------------------------------
+const scrollHint = document.getElementById('scrollHint');
+window.addEventListener('scroll', () => {
+    scrollHint.classList.toggle('hidden', window.scrollY > 5);
+}, { passive: true });
+
+// ------------------------------------------------------------
 // Boot
 // ------------------------------------------------------------
 let verses = [];
