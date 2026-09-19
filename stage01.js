@@ -18,7 +18,7 @@ const PHASE = {
 if (PHASE.fadeInEnd > PHASE.holdEnd) PHASE.holdEnd = PHASE.fadeInEnd;
 
 const REVEAL_OVERLAP = 1.2;    // >1 = words' fade-ins overlap a little; lower = more distinctly one-by-one
-const PARTICLE_STEP = 8;       // sample every Nth pixel (bigger = sparser + nhẹ hơn)
+const PARTICLE_STEP = 20;       // sample every Nth pixel (bigger = sparser + nhẹ hơn)
 const PARTICLE_MAX_DIST = 220; // how far a particle can drift at full dissolve
 const SCROLL_SMOOTHING = 0.06; // 0-1, how fast displayed progress catches up to raw scroll (lower = smoother/slower/laggier, higher = snappier/choppier)
 
@@ -106,7 +106,7 @@ class VerseController {
         }
 
         this.particles = pts;
-        this.particleColor = '#ffffff'; // dust is always white, regardless of theme
+        this.particleColor = shapeColor; // dust follows the theme color: dark=#ebe9ff, light=#605889
     }
 
     resizeCanvas(w, h) {

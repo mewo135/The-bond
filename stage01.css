@@ -129,7 +129,7 @@ body.light {
 
 /* ----- Verse 3 ----- */
 .pos-v3-l1 {
-    top: 486px;
+    top: 350px;
     left: 960px;
     transform: translateX(-50%);
 }
@@ -190,16 +190,11 @@ body.light {
 #titleNav {
     width: 180px;
     height: auto;
-    filter: drop-shadow(0 0 7px #ebe9ff);
     transition: opacity 0.3s ease;
 }
 
 #titleNav:hover {
     opacity: 0.7;
-}
-
-body.light #titleNav {
-    filter: drop-shadow(0 0 7px #605889);
 }
 
 /* THEME TOGGLE */
