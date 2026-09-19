@@ -188,16 +188,11 @@ body.light {
 #titleNav {
     width: 180px;
     height: auto;
-    filter: drop-shadow(0 0 7px #ebe9ff);
     transition: opacity 0.3s ease;
 }
 
 #titleNav:hover {
     opacity: 0.7;
-}
-
-body.light #titleNav {
-    filter: drop-shadow(0 0 7px #605889);
 }
 
 /* ===== SCROLL HINT (arrow + "Scroll down", shown before the user scrolls) ===== */
@@ -369,7 +364,7 @@ font-size: 50pt;
 #\31\.3 { /* "opens," */ 
     position: relative;
     right: -35px;
-    top: -100px;
+    top: -130px;
 }
 
 #\32\.13 { /* woven */

@@ -19,7 +19,7 @@ if (PHASE.fadeInEnd > PHASE.holdEnd) PHASE.holdEnd = PHASE.fadeInEnd;
 
 const REVEAL_OVERLAP = 1.2;    // >1 = words' fade-ins overlap a little; lower = more distinctly one-by-one
 const PARTICLE_STEP = 20;       // sample every Nth pixel (bigger = sparser + nhẹ hơn)
-const PARTICLE_MAX_DIST = 220; // how far a particle can drift at full dissolve
+const PARTICLE_MAX_DIST = 150; // how far a particle can drift at full dissolve
 const SCROLL_SMOOTHING = 0.06; // 0-1, how fast displayed progress catches up to raw scroll (lower = smoother/slower/laggier, higher = snappier/choppier)
 
 function lerp(a, b, t) { return a + (b - a) * t; }
