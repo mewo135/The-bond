@@ -443,3 +443,20 @@ body.light {
     position: relative; 
     left: 38px;  
 }
+
+.poem-word[data-id="finale-l1-w4"] {
+    position: relative;
+    left: 10px;   
+}
+
+.poem-word[data-id="finale-l1-w5"] {
+    position: relative;
+    left: 15px;
+}
+
+/* Dòng lời nhắc "Press E / ENTER" nhấp nháy nhẹ (giống fadeInOut bên opening) */
+.poem-line.blink { animation: poemBlink 2.4s ease-in-out infinite; }
+@keyframes poemBlink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}

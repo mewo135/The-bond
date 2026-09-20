@@ -146,7 +146,7 @@ function getGlowBuffer(p, src) {
     baked.pixelDensity(1);
     const ctx = baked.drawingContext;
 
-    ctx.filter = 'blur(6px)';
+    ctx.filter = 'blur(10px)';
     ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
     ctx.filter = 'blur(1.2px)';
     ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
@@ -156,7 +156,7 @@ function getGlowBuffer(p, src) {
     return baked;
 }
 
-function drawFlowerShape(target, cx, cy, size, buffer, rotation) {
+function drawFlowerShape(target, cx, cy, size, buffer, rotation, alpha = 1) {
     const baked = getGlowBuffer(target, buffer);
     const drawSize = baked.width * size;
 
@@ -164,7 +164,13 @@ function drawFlowerShape(target, cx, cy, size, buffer, rotation) {
     target.translate(cx, cy);
     target.rotate(rotation);
     target.imageMode(target.CENTER);
-    target.image(baked, 0, 0, drawSize, drawSize);
+    if (alpha < 1) {
+        target.drawingContext.globalAlpha = alpha;
+        target.image(baked, 0, 0, drawSize, drawSize);
+        target.drawingContext.globalAlpha = 1;
+    } else {
+        target.image(baked, 0, 0, drawSize, drawSize);
+    }
     target.pop();
 }
 
@@ -175,12 +181,28 @@ function drawFlowerShape(target, cx, cy, size, buffer, rotation) {
 // `flowers` luôn được giữ đúng thứ tự click (sort 1 lần lúc thêm hoa),
 // nên ở đây chỉ cần vẽ lần lượt: hoa click sau nằm trên cùng.
 // ================================================================
-function drawAllFlowers(p) {
+function drawAllFlowers(p, now) {
     flowers.forEach(f => {
         const t = p.frameCount * 0.02 + f.floatPhase;
         const floatY = Math.sin(t) * f.floatAmp;            // lên xuống rất nhẹ, vài px
         const floatRot = Math.sin(t * 0.7) * f.floatRotAmp; // xoay nhẹ
-        drawFlowerShape(p, f.x, f.baseY + floatY, f.size, f.buffer, f.rotation + floatRot);
+
+        let size = f.size;
+        let alpha = 1;
+        if (f.dissolveStart !== undefined && now > f.dissolveStart) {
+            // đang tan thành dust: mờ dần
+            alpha = 1 - easeInOut(clamp01((now - f.dissolveStart) / END_FLOWER_FADE));
+        }
+        if (f.growStart !== undefined) {
+            // hoa mới mọc từ dust: nhỏ -> to, mờ -> rõ
+            const g = clamp01((now - f.growStart) / END_GROW);
+            if (g <= 0) return;
+            size = f.size * (0.15 + 0.85 * easeOutCubic(g));
+            alpha = Math.min(1, g * 1.8);
+        }
+        if (alpha <= 0) return;
+
+        drawFlowerShape(p, f.x, f.baseY + floatY, size, f.buffer, f.rotation + floatRot, alpha);
     });
 }
 
@@ -286,6 +308,237 @@ function isMouseOverPanel(mx, my) {
     return mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom;
 }
 
+// ================================================================
+// ENDING: bấm E / ENTER -> tất cả hoa tan thành dust -> dust bay về
+// vài điểm -> 2 hoa mới mọc -> hiện "N to grow again / H to return".
+// Các state: planting -> ready -> dissolving -> growing -> done -> (N) planting
+// ================================================================
+const END_DISSOLVE_STAGGER = 1400; // ms: các bông bắt đầu tan rải rác trong khoảng này
+const END_FLOWER_FADE = 2200;      // ms: mỗi bông mờ hẳn
+const END_DUST_MAX = 1400;         // tổng số hạt dust tối đa lúc tan (chia đều theo số hoa)
+const END_SEED_DUST = 55;          // số hạt dust bay về mỗi điểm mọc hoa mới
+const END_GATHER = 2600;           // ms: dust bay về điểm mọc
+const END_GROW = 3200;             // ms: hoa mới mọc từ nhỏ -> to
+const END_OUTRO_DELAY = 800;       // ms: nghỉ sau khi hoa mọc xong rồi mới hiện chữ N / H
+// Vị trí 2 hoa mới (tỉ lệ theo màn hình: fx ngang, fy dọc) và cỡ
+const END_SEEDS = [
+    { fx: 0.40, fy: 0.68, size: 1.15 },
+    { fx: 0.60, fy: 0.74, size: 0.95 }
+];
+
+let endState = 'planting';
+let endT0 = 0;
+let endDoneAt = Infinity;
+let dust = [];
+let dustLastT = 0;
+
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+function easeInOut(u) { return u * u * (3 - 2 * u); }
+function easeOutCubic(u) { return 1 - Math.pow(1 - u, 3); }
+
+// Điểm mẫu trên hình bông hoa (toạ độ trong buffer 260x260) + màu thật tại điểm đó,
+// để dust có đúng hình dạng và màu của bông hoa. Cache theo buffer.
+const sampleCache = new WeakMap();
+function getFlowerSamples(src, fallbackColors) {
+    let samples = sampleCache.get(src);
+    if (samples) return samples;
+
+    samples = [];
+    try {
+        const w = src.canvas.width, h = src.canvas.height;
+        const data = src.drawingContext.getImageData(0, 0, w, h).data;
+        for (let y = 0; y < h; y += 5) {
+            for (let x = 0; x < w; x += 5) {
+                const i = (y * w + x) * 4;
+                if (data[i + 3] > 120) {
+                    samples.push({ x, y, css: `rgb(${data[i]}, ${data[i + 1]}, ${data[i + 2]})` });
+                }
+            }
+        }
+    } catch (e) {
+        samples = []; // canvas bị "tainted" (mở bằng file://) -> dùng cách dự phòng bên dưới
+    }
+    if (!samples.length) {
+        for (let k = 0; k < 200; k++) {
+            const a = Math.random() * Math.PI * 2;
+            const r = Math.sqrt(Math.random()) * 95;
+            samples.push({ x: 130 + Math.cos(a) * r, y: 130 + Math.sin(a) * r, css: pickRandom(fallbackColors) });
+        }
+    }
+    sampleCache.set(src, samples);
+    return samples;
+}
+
+// Rải dust từ đúng hình dáng bông hoa (tại vị trí/độ xoay hiện tại của nó)
+function spawnDust(f, now) {
+    const samples = getFlowerSamples(f.buffer, f.dustColors);
+    const per = Math.max(3, Math.min(28, Math.floor(END_DUST_MAX / Math.max(1, flowers.length))));
+
+    const t = mySketch.frameCount * 0.02 + f.floatPhase;
+    const cy = f.baseY + Math.sin(t) * f.floatAmp;
+    const rot = f.rotation + Math.sin(t * 0.7) * f.floatRotAmp;
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    const k = 0.9 * f.size; // buffer 260px -> kích thước vẽ (khớp GLOW_BASE / 260)
+
+    for (let i = 0; i < per; i++) {
+        const sm = samples[(Math.random() * samples.length) | 0];
+        const lx = (sm.x - 130) * k, ly = (sm.y - 130) * k;
+        dust.push({
+            x: f.x + lx * cos - ly * sin,
+            y: cy + lx * sin + ly * cos,
+            vx: (Math.random() - 0.5) * 0.5 + lx * 0.002,
+            vy: -(0.2 + Math.random() * 0.8),
+            size: 1 + Math.random() * 2,
+            css: sm.css,
+            born: now,
+            life: 2800 + Math.random() * 1800,
+            phase: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+function drawDust(p, now) {
+    const dt = dustLastT ? now - dustLastT : 16.667;
+    dustLastT = now;
+    if (!dust.length) return;
+    const dtScale = Math.min(3, dt / 16.667); // giữ tốc độ đều trên màn 60Hz / 120Hz
+
+    const ctx = p.drawingContext;
+    ctx.save();
+    for (let i = dust.length - 1; i >= 0; i--) {
+        const d = dust[i];
+        let alpha;
+
+        if (d.home) {
+            // dust bay về điểm mọc hoa mới
+            const h = d.home;
+            const u = clamp01((now - h.start) / h.dur);
+            const e = easeInOut(u);
+            const sway = 6 * (1 - u);
+            d.x = h.sx + (h.tx - h.sx) * e + Math.sin(now * 0.004 + d.phase) * sway;
+            d.y = h.sy + (h.ty - h.sy) * e + Math.cos(now * 0.004 + d.phase) * sway;
+            alpha = Math.min(1, u / 0.2) * (u < 0.85 ? 1 : 1 - (u - 0.85) / 0.15);
+            if (u >= 1) { dust[i] = dust[dust.length - 1]; dust.pop(); continue; }
+        } else {
+            // dust từ hoa cũ: bay lên nhẹ, lắc lư, mờ dần
+            const age = now - d.born;
+            if (age >= d.life) { dust[i] = dust[dust.length - 1]; dust.pop(); continue; }
+            d.x += (d.vx + Math.sin(now * 0.002 + d.phase) * 0.15) * dtScale;
+            d.y += d.vy * dtScale;
+            alpha = Math.pow(1 - age / d.life, 1.3);
+        }
+
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = d.css;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function startEnding() {
+    endState = 'dissolving';
+    endT0 = performance.now();
+    endDoneAt = Infinity;
+    poemHideLines(getPoemDom().finale, 1600);
+    flowers.forEach(f => {
+        f.dissolveStart = endT0 + Math.random() * END_DISSOLVE_STAGGER;
+        f.dustSpawned = false;
+    });
+}
+
+// Hoa cũ đã tan hết -> tạo 2 hoa mới + cho dust bay về 2 điểm mọc
+async function beginGather() {
+    endState = 'growing';
+    const oldPos = flowers.map(f => ({ x: f.x, y: f.baseY }));
+    flowers.length = 0;
+    updateFlowerCount();
+
+    const W = window.innerWidth, H = window.innerHeight;
+    const kinds = FLOWER_KINDS.slice().sort(() => Math.random() - 0.5);
+    const seeds = [];
+    for (let i = 0; i < END_SEEDS.length; i++) {
+        const sd = END_SEEDS[i];
+        const kind = kinds[i % kinds.length];
+        const daisyColor = parseInt(pickRandom(Object.keys(flowerTypes)));
+        const svgKey = kind === 'daisy' ? null : pickRandom(Object.keys(SVG_FLOWER_ASSETS[kind]));
+        let f = await buildFlower(kind, daisyColor, svgKey, W * sd.fx, H * sd.fy, sd.size, flowerOrderCounter++);
+        if (!f) f = await buildFlower('daisy', daisyColor, null, W * sd.fx, H * sd.fy, sd.size, flowerOrderCounter++);
+        seeds.push(f);
+    }
+
+    const t = performance.now();
+    const growAt = t + END_GATHER * 0.55; // hoa bắt đầu mọc khi dust gần tới nơi
+    seeds.forEach(f => {
+        f.growStart = growAt;
+        flowers.push(f);
+
+        const samples = getFlowerSamples(f.buffer, f.dustColors);
+        for (let k = 0; k < END_SEED_DUST; k++) {
+            // dust xuất phát quanh chỗ các bông hoa cũ vừa tan
+            const o = oldPos.length ? oldPos[(Math.random() * oldPos.length) | 0] : { x: W / 2, y: H / 2 };
+            const sm = samples[(Math.random() * samples.length) | 0];
+            const sx = o.x + (Math.random() - 0.5) * 160;
+            const sy = o.y + (Math.random() - 0.5) * 120;
+            dust.push({
+                x: sx, y: sy,
+                size: 1 + Math.random() * 2,
+                css: sm.css,
+                phase: Math.random() * Math.PI * 2,
+                home: {
+                    sx, sy,
+                    tx: f.x + (Math.random() - 0.5) * 30,
+                    ty: f.baseY + (Math.random() - 0.5) * 30,
+                    start: t + Math.random() * 500,
+                    dur: END_GATHER
+                }
+            });
+        }
+    });
+    flowers.sort((a, b) => a.order - b.order);
+    updateFlowerCount();
+    endDoneAt = growAt + END_GROW + END_OUTRO_DELAY;
+}
+
+function updateEnding(now) {
+    if (endState === 'dissolving') {
+        flowers.forEach(f => {
+            if (!f.dustSpawned && now >= f.dissolveStart) {
+                f.dustSpawned = true;
+                spawnDust(f, now);
+            }
+        });
+        if (now - endT0 >= END_DISSOLVE_STAGGER + END_FLOWER_FADE) beginGather();
+    } else if (endState === 'growing' && now >= endDoneAt) {
+        endState = 'done';
+        showOutro();
+    }
+}
+
+// N: "grow again" — vườn (2 hoa mới) tiếp tục, chữ chạy lại khi đủ số hoa
+function growAgain() {
+    endState = 'planting';
+    hideOutro();
+    poemStarted = false;
+    checkPoem();
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+
+    if ((k === 'e' || k === 'enter') && endState === 'ready') {
+        e.preventDefault(); // tránh Enter kích hoạt nút đang focus (vd nút Random)
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        startEnding();
+    } else if (k === 'n' && endState === 'done') {
+        growAgain();
+    } else if (k === 'h' && endState === 'done') {
+        window.location.href = 'index.html';
+    }
+});
+
 // Màn retina (Mac) có devicePixelRatio = 2 -> canvas nhiều pixel gấp 4 lần.
 // Hoa vốn đã mềm/blur nên hạ xuống 1 gần như không thấy khác mà nhẹ hơn nhiều.
 // Muốn nét hơn thì tăng (1.5 hoặc 2), muốn nhẹ hơn nữa thì giữ 1.
@@ -327,11 +580,14 @@ const sketch = (p) => {
     };
 
     p.draw = function() {
+        const now = performance.now();
         p.background(bgPalettes[currentTheme].bg1);
         drawFallingPetals();
+        updateEnding(now);
 
         const t1 = PERF_HUD ? performance.now() : 0;
-        drawAllFlowers(p); // vẽ trực tiếp mỗi frame (có lắc), không dùng layer tĩnh nữa
+        drawAllFlowers(p, now); // vẽ trực tiếp mỗi frame (có lắc), không dùng layer tĩnh nữa
+        drawDust(p, now);       // dust của hiệu ứng kết thúc (rỗng nếu chưa bấm E)
         const t2 = PERF_HUD ? performance.now() : 0;
         drawParticles(p);
         if (PERF_HUD) perfTick(t2 - t1, performance.now() - t2);
@@ -340,6 +596,8 @@ const sketch = (p) => {
     // Click chuột lên canvas -> tạo 1 hoa tại đúng vị trí click
     p.mousePressed = function() {
         if (isMouseOverPanel(p.mouseX, p.mouseY)) return; // đừng tạo hoa khi bấm trong panel
+        // đang tan / đang mọc / đang chờ bấm N thì không trồng thêm
+        if (endState !== 'planting' && endState !== 'ready') return;
         addFlowerAt(p.mouseX, p.mouseY);
     };
 
@@ -362,6 +620,48 @@ function pickRandom(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// Dựng 1 bông hoa (không đụng tới panel) — dùng cho click và cho 2 hoa mới lúc kết thúc.
+// Trả về null nếu thiếu file SVG.
+async function buildFlower(kind, daisyColor, svgColorKey, x, y, rawSize, order) {
+    const TULIP_SIZE_FACTOR = 0.65;
+    const size = kind === 'tulip' ? rawSize * TULIP_SIZE_FACTOR : rawSize;
+    let buffer;
+    let dustColors; // màu dự phòng cho dust nếu không đọc được pixel
+
+    if (kind === 'daisy') {
+        const fat = Math.random() > 0.5;
+        buffer = getOrCreateFlowerBuffer(mySketch, daisyColor, fat);
+        const c = flowerTypes[daisyColor];
+        dustColors = [c.outer, c.mid, c.center].map(a => `rgb(${a[0]}, ${a[1]}, ${a[2]})`);
+    } else {
+        buffer = await getOrCreateSvgBuffer(mySketch, kind, svgColorKey);
+        if (!buffer) return null;
+        dustColors = [SVG_FLOWER_ASSETS[kind][svgColorKey].colorHex];
+    }
+
+    const rotation = kind === 'tulip'
+        ? mySketch.random(-0.26, 0.26) // ~±15 độ
+        : mySketch.random(0, Math.PI * 2);
+
+    return {
+        order: order,
+        x: x,
+        baseY: y, // vị trí gốc; lắc nhẹ quanh baseY mỗi frame
+        size: size,
+        buffer: buffer,
+        dustColors: dustColors,
+        rotation: rotation,
+        // tham số lắc — rất nhẹ giống landing (chỉ vài px)
+        floatPhase: mySketch.random(0, Math.PI * 2),
+        floatAmp: mySketch.random(3, 6),        // biên độ lên xuống (px)
+        floatRotAmp: mySketch.random(0.02, 0.05) // biên độ xoay (rad, rất nhỏ)
+    };
+}
+
+function updateFlowerCount() {
+    document.getElementById('flowerCountDisplay').textContent = flowers.length;
+}
+
 async function addFlowerAt(x, y) {
     const order = flowerOrderCounter++; // gán thứ tự lúc click, trước mọi await
     // Mặc định: dùng đúng lựa chọn đang chọn trên panel (nguyên bản).
@@ -380,39 +680,15 @@ async function addFlowerAt(x, y) {
     }
 
     const rawSize = parseFloat(document.getElementById('flowerSize').value);
-    const TULIP_SIZE_FACTOR = 0.65;
-    const size = kind === 'tulip' ? rawSize * TULIP_SIZE_FACTOR : rawSize;
-    let buffer;
-
-    if (kind === 'daisy') {
-        const fat = Math.random() > 0.5;
-        buffer = getOrCreateFlowerBuffer(mySketch, daisyColor, fat);
-    } else {
-        buffer = await getOrCreateSvgBuffer(mySketch, kind, svgColorKey);
-        if (!buffer) {
-            console.log(`Chưa có SVG cho ${kind}/${svgColorKey}, bỏ qua.`);
-            return;
-        }
+    const flower = await buildFlower(kind, daisyColor, svgColorKey, x, y, rawSize, order);
+    if (!flower) {
+        console.log(`Chưa có SVG cho ${kind}/${svgColorKey}, bỏ qua.`);
+        return;
     }
 
-    const rotation = kind === 'tulip'
-        ? mySketch.random(-0.26, 0.26) // ~±15 độ
-        : mySketch.random(0, Math.PI * 2);
-
-    flowers.push({
-        order: order,
-        x: x,
-        baseY: y, // vị trí gốc; lắc nhẹ quanh baseY mỗi frame
-        size: size,
-        buffer: buffer,
-        rotation: rotation,
-        // tham số lắc — rất nhẹ giống landing (chỉ vài px)
-        floatPhase: mySketch.random(0, Math.PI * 2),
-        floatAmp: mySketch.random(3, 6),        // biên độ lên xuống (px)
-        floatRotAmp: mySketch.random(0.02, 0.05) // biên độ xoay (rad, rất nhỏ)
-    });
+    flowers.push(flower);
     flowers.sort((a, b) => a.order - b.order); // giữ đúng thứ tự click (SVG load chậm có thể push trễ)
-    document.getElementById('flowerCountDisplay').textContent = flowers.length;
+    updateFlowerCount();
     checkPoem();
 }
 
@@ -471,7 +747,7 @@ function rebuildColorSwatches() {
 
 rebuildColorSwatches();
 
-// ===== POEM: câu chữ hiện TỪNG CHỮ sau khi đủ số hoa =====
+// ===== POEM: câu chữ hiện TỪNG CHỮ sau khi đủ số hoa (chạy 1 lượt, không loop) =====
 const POEM_THRESHOLD = 10;      // số hoa cần tạo để bắt đầu
 const POEM_START_DELAY = 1500;  // ms chờ trước khi câu đầu tiên hiện
 const POEM_WORD_FADE_IN = 1400; // ms mỗi chữ fade in (càng lớn càng chậm)
@@ -480,11 +756,9 @@ const POEM_LINE_PAUSE = 500;    // ms nghỉ thêm khi xuống dòng mới
 const POEM_HOLD = 4000;         // ms giữ nguyên sau khi chữ cuối hiện xong
 const POEM_FADE_OUT = 3500;     // ms fade out (cả câu cùng mờ, không tan biến)
 const POEM_GAP = 3000;          // ms nghỉ giữa 2 câu
-const POEM_LOOP = true;         // hết câu cuối thì quay lại câu đầu
 
 // Cú pháp chữ: từ thường = regular | *từ = accent | ~từ = accent small | _từ = regular small
 // top/left tính theo khung 1920x1080 (gốc ở góc trên trái; top tăng = xuống, left tăng = sang phải).
-// Câu 1 theo ảnh mẫu, câu 2-3 là chữ tạm — bạn thay bằng nội dung thật.
 const POEM_SENTENCES = [
     [
         { top: 270, left: 108, text: 'When a flower *blooms' },
@@ -510,6 +784,19 @@ const POEM_SENTENCES = [
     ]
 ];
 
+// Câu kết sau câu cuối: chữ ở lại, dòng có blink:true nhấp nháy nhẹ. Bấm E / ENTER để bắt đầu kết thúc.
+// data-id của chữ: finale-l<dòng>-w<chữ>
+const POEM_FINALE = [
+    { top: 300, left: 180, text: 'Something new has ~taken ~root.' },
+    { top: 470, left: 220, text: "Press E / ENTER when you're ready.", blink: true }
+];
+
+// Chữ hiện sau khi 2 hoa mới mọc xong. data-id của chữ: outro-l<dòng>-w<chữ>
+const POEM_OUTRO = [
+    { top: 300, left: 180, text: 'Press N to *grow again.' },
+    { top: 470, left: 220, text: 'Press H to return to the beginning.' }
+];
+
 let poemStarted = false;
 
 function updatePoemScale() {
@@ -527,72 +814,96 @@ function parsePoemWord(token) {
     return { cls: 'regular', text: token };
 }
 
-// Trả về sentences[câu][dòng] = mảng các <span> chữ
+// Dựng 1 dòng: trả về { el, words:[<span>], blink }
+function makePoemLine(wrap, line, idPrefix) {
+    const el = document.createElement('div');
+    el.className = 'poem-line';
+    el.style.top = line.top + 'px';
+    el.style.left = line.left + 'px';
+
+    const words = line.text.split(' ').filter(Boolean).map((token, wi) => {
+        const w = parsePoemWord(token);
+        const span = document.createElement('span');
+        span.className = 'poem-word ' + w.cls;
+        span.dataset.id = `${idPrefix}-w${wi + 1}`; // để chỉnh riêng bằng CSS
+        span.textContent = w.text;
+        el.appendChild(span);
+        return span;
+    });
+
+    wrap.appendChild(el);
+    return { el, words, blink: !!line.blink };
+}
+
+// sentences[câu][dòng] = { el, words, blink } ; finale / outro[dòng] = { el, words, blink }
 function buildPoem() {
     const wrap = document.createElement('div');
     wrap.id = 'poem';
 
-    const sentences = POEM_SENTENCES.map((lines, si) => lines.map((line, li) => {
-        const el = document.createElement('div');
-        el.className = 'poem-line';
-        el.style.top = line.top + 'px';
-        el.style.left = line.left + 'px';
+    const sentences = POEM_SENTENCES.map((lines, si) =>
+        lines.map((line, li) => makePoemLine(wrap, line, `s${si + 1}-l${li + 1}`)));
+    const finale = POEM_FINALE.map((line, li) => makePoemLine(wrap, line, `finale-l${li + 1}`));
+    const outro = POEM_OUTRO.map((line, li) => makePoemLine(wrap, line, `outro-l${li + 1}`));
 
-        const words = line.text.split(' ').filter(Boolean).map((token, wi) => {
-            const w = parsePoemWord(token);
-            const span = document.createElement('span');
-            span.className = 'poem-word ' + w.cls;
-            span.dataset.id = `s${si + 1}-l${li + 1}-w${wi + 1}`; // để chỉnh riêng bằng CSS
-            span.textContent = w.text;
-            el.appendChild(span);
-            return span;
-        });
+    return { wrap, sentences, finale, outro };
+}
 
-        wrap.appendChild(el);
-        return words;
-    }));
-
-    return { wrap, sentences };
+// Chỉ dựng DOM 1 lần, dùng lại cho các lượt sau (sau khi bấm N)
+let poemDom = null;
+function getPoemDom() {
+    if (!poemDom) {
+        poemDom = buildPoem();
+        document.body.appendChild(poemDom.wrap);
+    }
+    return poemDom;
 }
 
 const poemSleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+// fade in từng chữ, dòng nọ nối dòng kia
+async function poemShowLines(lines) {
+    for (const line of lines) {
+        for (const word of line.words) {
+            word.style.setProperty('--fade', POEM_WORD_FADE_IN + 'ms');
+            word.classList.add('show');
+            await poemSleep(POEM_WORD_STAGGER);
+        }
+        await poemSleep(POEM_LINE_PAUSE);
+    }
+}
+
+// fade out chậm (cả nhóm dòng cùng mờ đi, không tan)
+function poemHideLines(lines, ms) {
+    lines.forEach(line => {
+        line.el.classList.remove('blink');
+        line.words.forEach(word => {
+            word.style.setProperty('--fade', ms + 'ms');
+            word.classList.remove('show');
+        });
+    });
+}
+
 async function runPoem() {
-    const poem = buildPoem();
-    document.body.appendChild(poem.wrap);
+    const poem = getPoemDom();
 
     await poemSleep(POEM_START_DELAY);
 
-    let i = 0;
-    while (true) {
-        const lines = poem.sentences[i];
-        const allWords = lines.flat();
-
-        // fade in từng chữ, chậm
-        for (const line of lines) {
-            for (const word of line) {
-                word.style.setProperty('--fade', POEM_WORD_FADE_IN + 'ms');
-                word.classList.add('show');
-                await poemSleep(POEM_WORD_STAGGER);
-            }
-            await poemSleep(POEM_LINE_PAUSE);
-        }
+    for (const lines of poem.sentences) {
+        await poemShowLines(lines);
         await poemSleep(POEM_WORD_FADE_IN + POEM_HOLD);
-
-        // fade out chậm (cả câu cùng mờ đi, không tan)
-        allWords.forEach(word => {
-            word.style.setProperty('--fade', POEM_FADE_OUT + 'ms');
-            word.classList.remove('show');
-        });
+        poemHideLines(lines, POEM_FADE_OUT);
         await poemSleep(POEM_FADE_OUT + POEM_GAP);
-
-        i++;
-        if (i >= poem.sentences.length) {
-            if (!POEM_LOOP) break;
-            i = 0;
-        }
     }
+
+    // Câu kết: chữ ở lại, lời nhắc nhấp nháy, chờ người dùng bấm E / ENTER
+    await poemShowLines(poem.finale);
+    await poemSleep(POEM_WORD_FADE_IN);
+    poem.finale.forEach(line => { if (line.blink) line.el.classList.add('blink'); });
+    endState = 'ready';
 }
+
+async function showOutro() { await poemShowLines(getPoemDom().outro); }
+function hideOutro() { poemHideLines(getPoemDom().outro, 1500); }
 
 function checkPoem() {
     if (!poemStarted && flowers.length >= POEM_THRESHOLD) {
