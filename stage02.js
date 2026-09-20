@@ -146,7 +146,7 @@ function getGlowBuffer(p, src) {
     baked.pixelDensity(1);
     const ctx = baked.drawingContext;
 
-    ctx.filter = 'blur(10px)';
+    ctx.filter = 'blur(6px)';
     ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
     ctx.filter = 'blur(1.2px)';
     ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
