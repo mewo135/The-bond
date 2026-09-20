@@ -426,7 +426,7 @@ body.light {
 
 .poem-word[data-id="s4-l2-w4"] {
     position: relative; 
-    left: 22px;  
+    left: 23px;  
 }
 
 .poem-word[data-id="s5-l1-w2"] {
@@ -434,12 +434,12 @@ body.light {
     left: 22px;  
 }
 
-.poem-word[data-id="s5-l2-w3"] {
+.poem-word[data-id="s5-l2-w2"] {
     position: relative; 
-    left: 42px;  
+    left: 20px;  
 }
 
-.poem-word[data-id="s5-l2-w4"] {
+.poem-word[data-id="s5-l2-w3"] {
     position: relative; 
-    left: 42px;  
+    left: 38px;  
 }
