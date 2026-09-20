@@ -788,13 +788,13 @@ const POEM_SENTENCES = [
 // data-id của chữ: finale-l<dòng>-w<chữ>
 const POEM_FINALE = [
     { top: 300, left: 180, text: 'Something new has ~taken ~root.' },
-    { top: 370, left: 220, text: "Press E / ENTER when you're ready.", blink: true }
+    { top: 400, left: 220, text: "Press E / ENTER when you're ready.", blink: true }
 ];
 
 // Chữ hiện sau khi 2 hoa mới mọc xong. data-id của chữ: outro-l<dòng>-w<chữ>
 const POEM_OUTRO = [
     { top: 300, left: 180, text: 'Press N to *grow again.' },
-    { top: 370, left: 220, text: 'Press H to return to the beginning.' }
+    { top: 440, left: 250, text: 'Press H to return to the beginning.' }
 ];
 
 let poemStarted = false;
