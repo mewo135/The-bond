@@ -146,7 +146,7 @@ function getGlowBuffer(p, src) {
     baked.pixelDensity(1);
     const ctx = baked.drawingContext;
 
-    ctx.filter = 'blur(6px)';
+    ctx.filter = 'blur(10px)';
     ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
     ctx.filter = 'blur(1.2px)';
     ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
@@ -286,8 +286,41 @@ function isMouseOverPanel(mx, my) {
     return mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom;
 }
 
+// Màn retina (Mac) có devicePixelRatio = 2 -> canvas nhiều pixel gấp 4 lần.
+// Hoa vốn đã mềm/blur nên hạ xuống 1 gần như không thấy khác mà nhẹ hơn nhiều.
+// Muốn nét hơn thì tăng (1.5 hoặc 2), muốn nhẹ hơn nữa thì giữ 1.
+const MAX_PIXEL_DENSITY = 1;
+
+// ===== PERF HUD: mở trang với ?perf (vd stage02.html?perf) để xem FPS =====
+// "JS ms" là thời gian JS tốn để ra lệnh vẽ. FPS thấp mà JS ms thấp => nghẽn ở GPU/pixel.
+const PERF_HUD = new URLSearchParams(location.search).has('perf');
+let perfEl = null, perfFrames = 0, perfSince = 0, perfFlowerMs = 0, perfParticleMs = 0;
+
+function perfTick(flowerMs, particleMs) {
+    const now = performance.now();
+    if (!perfEl) {
+        perfEl = document.createElement('div');
+        perfEl.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:300;padding:6px 8px;' +
+            'font:12px monospace;color:#0f0;background:rgba(0,0,0,.7);pointer-events:none;white-space:pre';
+        document.body.appendChild(perfEl);
+        perfSince = now;
+    }
+    perfFrames++;
+    perfFlowerMs += flowerMs;
+    perfParticleMs += particleMs;
+    if (now - perfSince >= 500) {
+        const fps = perfFrames * 1000 / (now - perfSince);
+        perfEl.textContent =
+            'FPS ' + fps.toFixed(0) + '  |  hoa ' + flowers.length + '\n' +
+            'JS hoa ' + (perfFlowerMs / perfFrames).toFixed(2) + ' ms\n' +
+            'JS hat ' + (perfParticleMs / perfFrames).toFixed(2) + ' ms';
+        perfFrames = 0; perfFlowerMs = 0; perfParticleMs = 0; perfSince = now;
+    }
+}
+
 const sketch = (p) => {
     p.setup = function() {
+        p.pixelDensity(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_DENSITY));
         p.createCanvas(window.innerWidth, window.innerHeight);
         p.smooth();
         createBgBuffer(p);
@@ -296,8 +329,12 @@ const sketch = (p) => {
     p.draw = function() {
         p.background(bgPalettes[currentTheme].bg1);
         drawFallingPetals();
+
+        const t1 = PERF_HUD ? performance.now() : 0;
         drawAllFlowers(p); // vẽ trực tiếp mỗi frame (có lắc), không dùng layer tĩnh nữa
+        const t2 = PERF_HUD ? performance.now() : 0;
         drawParticles(p);
+        if (PERF_HUD) perfTick(t2 - t1, performance.now() - t2);
     };
 
     // Click chuột lên canvas -> tạo 1 hoa tại đúng vị trí click
