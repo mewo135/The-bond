@@ -138,7 +138,7 @@ function drawFlowerShape(target, cx, cy, size, buffer, rotation) {
     target.rotate(rotation);
 
     target.push();
-    target.drawingContext.filter = 'blur(10px)';
+    target.drawingContext.filter = 'blur(5px)';
     target.imageMode(target.CENTER);
     target.image(buffer, 0, 0, drawSize, drawSize);
     target.drawingContext.filter = 'none';
