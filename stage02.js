@@ -423,12 +423,12 @@ rebuildColorSwatches();
 // ===== POEM: câu chữ hiện TỪNG CHỮ sau khi đủ số hoa =====
 const POEM_THRESHOLD = 10;      // số hoa cần tạo để bắt đầu
 const POEM_START_DELAY = 1500;  // ms chờ trước khi câu đầu tiên hiện
-const POEM_WORD_FADE_IN = 1800; // ms mỗi chữ fade in (càng lớn càng chậm)
-const POEM_WORD_STAGGER = 700;  // ms cách nhau giữa 2 chữ liên tiếp
+const POEM_WORD_FADE_IN = 1400; // ms mỗi chữ fade in (càng lớn càng chậm)
+const POEM_WORD_STAGGER = 500;  // ms cách nhau giữa 2 chữ liên tiếp
 const POEM_LINE_PAUSE = 500;    // ms nghỉ thêm khi xuống dòng mới
-const POEM_HOLD = 4500;         // ms giữ nguyên sau khi chữ cuối hiện xong
+const POEM_HOLD = 4000;         // ms giữ nguyên sau khi chữ cuối hiện xong
 const POEM_FADE_OUT = 3500;     // ms fade out (cả câu cùng mờ, không tan biến)
-const POEM_GAP = 1500;          // ms nghỉ giữa 2 câu
+const POEM_GAP = 4500;          // ms nghỉ giữa 2 câu
 const POEM_LOOP = true;         // hết câu cuối thì quay lại câu đầu
 
 // Cú pháp chữ: từ thường = regular | *từ = accent | ~từ = accent small | _từ = regular small
@@ -441,11 +441,21 @@ const POEM_SENTENCES = [
     ],
     [
         { top: 300, left: 180, text: 'Its' },
-        { top: 350, left: 240, text: '~beggining already holds the traces of its *ending' }
+        { top: 350, left: 240, text: '~begining already holds the traces of its *ending' }
     ],
     [
         { top: 300, left: 180, text: 'As it fades, it ~carries the ~beginning' },
         { top: 385, left: 220, text: 'of what *comes *next' }
+    ],
+
+    [
+        { top: 300, left: 180, text: 'Blooming, fading, giving birth, and growing' },
+        { top: 370, left: 230, text: 'are ~not *separate moments' }
+    ],
+
+    [
+        { top: 300, left: 180, text: 'They *happen' },
+        { top: 370, left: 220, text: 'all *at *once' }
     ]
 ];
 
