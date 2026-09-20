@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="light" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 36.45 39.15">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-2 {
+        fill: #fff;
+        font-family: Ballet-Regular, Ballet;
+        font-size: 227.3811px;
+        font-variation-settings: 'opsz' 16;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="-131.8811" y1="6087.0076" x2="-131.8811" y2="6051.0306" gradientTransform="translate(3908.0243 -4639.763) rotate(38.6035)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4982c4"/>
+      <stop offset=".0468" stop-color="#648eb9"/>
+      <stop offset=".1418" stop-color="#97a4a6"/>
+      <stop offset=".2313" stop-color="#beb597"/>
+      <stop offset=".3128" stop-color="#dbc18c"/>
+      <stop offset=".3836" stop-color="#ecc986"/>
+      <stop offset=".4357" stop-color="#f3cc84"/>
+      <stop offset=".9419" stop-color="#f7bb84"/>
+      <stop offset="1" stop-color="#f8b984"/>
+    </linearGradient>
+  </defs>
+  <text class="cls-2" transform="translate(-83.4831 -163.8632)"><tspan x="0" y="0">The</tspan></text>
+  <path class="cls-1" d="M27.3504,29.203c-4.0022,5.0128-17.7016,7.7433-20.247,5.6497s-2.9761-15.9826,1.0261-20.9954c4.0022-5.0128,17.476-10.1661,21.1065-7.3704,3.6305,2.7957,2.1165,17.7033-1.8857,22.7161Z"/>
+</svg>

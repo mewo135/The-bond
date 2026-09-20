@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Bond</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://use.typekit.net/exh4qsk.css">
+    <script src="https://cdn.jsdelivr.net/npm/p5@2.2.3/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5.sound@0.3.0/dist/p5.sound.min.js"></script>
+</head>
+
+<body class="landing">
+    <main>
+  <!-- góc trên phải: 2 hồng + 3 vàng -->
+  <div class="corner corner--top">
+    <img class="hydrangea hydrangea--pink-1"   src="assets/hydrangea-pink.svg"   alt="">
+    <img class="hydrangea hydrangea--pink-2"   src="assets/hydrangea-pink.svg"   alt="">
+    <img class="hydrangea hydrangea--yellow-1" src="assets/hydrangea-yellow.svg" alt="">
+    <img class="hydrangea hydrangea--yellow-2" src="assets/hydrangea-yellow.svg" alt="">
+    <img class="hydrangea hydrangea--yellow-3" src="assets/hydrangea-yellow.svg" alt="">
+  </div>
+
+  <!-- góc dưới trái: 2 hồng + 3 vàng -->
+  <div class="corner corner--bottom">
+    <img class="hydrangea hydrangea--pink-3"   src="assets/hydrangea-pink.svg"   alt="">
+    <img class="hydrangea hydrangea--pink-4"   src="assets/hydrangea-pink.svg"   alt="">
+    <img class="hydrangea hydrangea--yellow-4" src="assets/hydrangea-yellow.svg" alt="">
+    <img class="hydrangea hydrangea--yellow-5" src="assets/hydrangea-yellow.svg" alt="">
+    <img class="hydrangea hydrangea--yellow-6" src="assets/hydrangea-yellow.svg" alt="">
+  </div>
+
+
+        <div class="title-center">
+        <img id="titleImg" class="title" src="assets/title.svg" alt="The Bond">
+
+        <p id="landingtext">we exist in relation</p>
+        
+        <!-- Daisy Blue -->
+        <img id="daisyblue" src="assets/daisyblue.svg" class="daisy" alt="daisy">
+        <img id="daisyblueglow" src="assets/daisyblue.svg" class="daisy-glow" alt="daisy glow">
+        
+        <!-- Daisy Pink -->
+        <img id="daisypink" src="assets/daisypink.svg" class="daisy" alt="daisy">
+        <img id="daisypinkglow" src="assets/daisypink.svg" class="daisy-glow" alt="daisy glow">
+        
+        <!-- Daisy Yellow -->
+        <img id="daisyyellow" src="assets/daisyyellow.svg" class="daisy" alt="daisy">
+        <img id="daisyyellowglow" src="assets/daisyyellow.svg" class="daisy-glow" alt="daisy glow">
+        </div>
+
+        <p id="begin">Press E / Enter to join the journey</p>
+
+        <div class="theme-toggle-container">
+            <input type="checkbox" id="themeToggle" class="toggle-checkbox">
+            <label for="themeToggle" class="toggle-label">
+                <img class="toggle-icon toggle-icon-light" src="assets/lighticon.svg" alt="light">
+                <img class="toggle-icon toggle-icon-dark" src="assets/darkicon.svg" alt="dark">
+                <span class="toggle-circle"></span>
+            </label>
+        </div>
+    </main>
+
+    <script src="landing.js"></script>
+</body>
+</html>
