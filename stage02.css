@@ -454,6 +454,15 @@ body.light {
     left: 15px;
 }
 
+.poem-word[data-id="outro-l1-w4"] {
+    position: relative;
+    left: 15px;
+}
+.poem-word[data-id="outro-l1-w5"] {
+    position: relative;
+    left: 15px;
+}
+
 /* Dòng lời nhắc "Press E / ENTER" nhấp nháy nhẹ (giống fadeInOut bên opening) */
 .poem-line.blink { animation: poemBlink 2.4s ease-in-out infinite; }
 @keyframes poemBlink {
