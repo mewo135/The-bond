@@ -130,39 +130,53 @@ async function getOrCreateSvgBuffer(p, kind, colorKey) {
     }
 }
 
+// ---- Blur glow được "nướng" sẵn 1 lần cho mỗi loại hoa ----
+// Trước đây mỗi bông mỗi frame chạy 2 lần ctx.filter = blur(...) -> rất nặng.
+// Giờ: blur 1 lần khi buffer được dùng lần đầu, sau đó mỗi bông chỉ 1 lần image().
+const GLOW_BASE = 260 * 0.9;  // kích thước vẽ khi size = 1 (giữ đúng như cũ)
+const GLOW_PAD = 36;          // chừa viền cho vệt blur khỏi bị cắt
+const glowCache = new WeakMap();
+
+function getGlowBuffer(p, src) {
+    let baked = glowCache.get(src);
+    if (baked) return baked;
+
+    const S = Math.ceil(GLOW_BASE + GLOW_PAD * 2);
+    baked = p.createGraphics(S, S);
+    baked.pixelDensity(1);
+    const ctx = baked.drawingContext;
+
+    ctx.filter = 'blur(6px)';
+    ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
+    ctx.filter = 'blur(1.2px)';
+    ctx.drawImage(src.canvas, GLOW_PAD, GLOW_PAD, GLOW_BASE, GLOW_BASE);
+    ctx.filter = 'none';
+
+    glowCache.set(src, baked);
+    return baked;
+}
+
 function drawFlowerShape(target, cx, cy, size, buffer, rotation) {
-    const drawSize = 260 * size * 0.9;
+    const baked = getGlowBuffer(target, buffer);
+    const drawSize = baked.width * size;
 
     target.push();
     target.translate(cx, cy);
     target.rotate(rotation);
-
-    target.push();
-    target.drawingContext.filter = 'blur(5px)';
     target.imageMode(target.CENTER);
-    target.image(buffer, 0, 0, drawSize, drawSize);
-    target.drawingContext.filter = 'none';
-    target.pop();
-
-    target.push();
-    target.drawingContext.filter = 'blur(1.2px)';
-    target.imageMode(target.CENTER);
-    target.image(buffer, 0, 0, drawSize, drawSize);
-    target.drawingContext.filter = 'none';
-    target.pop();
-
+    target.image(baked, 0, 0, drawSize, drawSize);
     target.pop();
 }
 
 // ================================================================
 // Hoa BAY LẮC nhẹ liên tục (giống hoa trang trí bên landing) — mỗi
-// frame vẽ lại ở vị trí lắc mới, không bake tĩnh. Vẫn nhẹ vì buffer
-// từng bông đã pre-render sẵn (không blur runtime), mỗi bông chỉ tốn
-// 2 lần image() mỗi frame.
+// frame vẽ lại ở vị trí lắc mới, không bake tĩnh. Nhẹ vì blur đã bake
+// sẵn (getGlowBuffer), mỗi bông chỉ tốn 1 lần image() mỗi frame.
+// `flowers` luôn được giữ đúng thứ tự click (sort 1 lần lúc thêm hoa),
+// nên ở đây chỉ cần vẽ lần lượt: hoa click sau nằm trên cùng.
 // ================================================================
 function drawAllFlowers(p) {
-    const sorted = [...flowers].sort((a, b) => a.order - b.order); // hoa click sau nằm trên cùng
-    sorted.forEach(f => {
+    flowers.forEach(f => {
         const t = p.frameCount * 0.02 + f.floatPhase;
         const floatY = Math.sin(t) * f.floatAmp;            // lên xuống rất nhẹ, vài px
         const floatRot = Math.sin(t * 0.7) * f.floatRotAmp; // xoay nhẹ
@@ -219,8 +233,11 @@ function initFallingPetals() {
         const img = document.createElement('img');
         img.src = 'assets/' + filename;
         img.style.position = 'fixed';
-        img.style.left = (PETAL_SPACING * (i + 1) + (Math.random() - 0.5) * 100) + 'px';
-        img.style.top = (Math.random() * 150 - 200) + 'px';
+        const startX = PETAL_SPACING * (i + 1) + (Math.random() - 0.5) * 100;
+        const startY = Math.random() * 150 - 200;
+        img.style.left = '0px';
+        img.style.top = '0px';
+        img.style.willChange = 'transform, opacity';
         img.style.width = '48px';
         img.style.height = '48px';
         img.style.pointerEvents = 'none';
@@ -229,8 +246,8 @@ function initFallingPetals() {
 
         fallingPetals.push({
             el: img,
-            x: parseFloat(img.style.left),
-            y: parseFloat(img.style.top),
+            x: startX,
+            y: startY,
             speed: Math.random() * 0.5 + 2,
             rotation: Math.random() * 360,
             rotationSpeed: (Math.random() - 0.5) * 4
@@ -245,9 +262,8 @@ function drawFallingPetals() {
         petal.x += petal.speed * Math.cos(angle);
         petal.rotation += petal.rotationSpeed;
 
-        petal.el.style.top = petal.y + 'px';
-        petal.el.style.left = petal.x + 'px';
-        petal.el.style.transform = 'rotate(' + petal.rotation + 'deg)';
+        petal.el.style.transform =
+            'translate(' + petal.x + 'px, ' + petal.y + 'px) rotate(' + petal.rotation + 'deg)';
 
         const alpha = Math.max(0, Math.min(1, 1 - petal.y / window.innerHeight));
         petal.el.style.opacity = alpha;
@@ -255,7 +271,6 @@ function drawFallingPetals() {
         if (petal.y > window.innerHeight + 50) {
             petal.y = -100;
             petal.x = Math.random() * window.innerWidth;
-            petal.el.style.left = petal.x + 'px';
             petal.rotation = Math.random() * 360;
         }
     });
@@ -279,9 +294,7 @@ const sketch = (p) => {
     };
 
     p.draw = function() {
-        if (bgBuffer) {
-            p.image(bgBuffer, 0, 0);
-        }
+        p.background(bgPalettes[currentTheme].bg1);
         drawFallingPetals();
         drawAllFlowers(p); // vẽ trực tiếp mỗi frame (có lắc), không dùng layer tĩnh nữa
         drawParticles(p);
@@ -361,6 +374,7 @@ async function addFlowerAt(x, y) {
         floatAmp: mySketch.random(3, 6),        // biên độ lên xuống (px)
         floatRotAmp: mySketch.random(0.02, 0.05) // biên độ xoay (rad, rất nhỏ)
     });
+    flowers.sort((a, b) => a.order - b.order); // giữ đúng thứ tự click (SVG load chậm có thể push trễ)
     document.getElementById('flowerCountDisplay').textContent = flowers.length;
     checkPoem();
 }
