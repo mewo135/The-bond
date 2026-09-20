@@ -428,7 +428,7 @@ const POEM_WORD_STAGGER = 500;  // ms cách nhau giữa 2 chữ liên tiếp
 const POEM_LINE_PAUSE = 500;    // ms nghỉ thêm khi xuống dòng mới
 const POEM_HOLD = 4000;         // ms giữ nguyên sau khi chữ cuối hiện xong
 const POEM_FADE_OUT = 3500;     // ms fade out (cả câu cùng mờ, không tan biến)
-const POEM_GAP = 4500;          // ms nghỉ giữa 2 câu
+const POEM_GAP = 3000;          // ms nghỉ giữa 2 câu
 const POEM_LOOP = true;         // hết câu cuối thì quay lại câu đầu
 
 // Cú pháp chữ: từ thường = regular | *từ = accent | ~từ = accent small | _từ = regular small
@@ -455,7 +455,7 @@ const POEM_SENTENCES = [
 
     [
         { top: 300, left: 180, text: 'They *happen' },
-        { top: 370, left: 220, text: 'all *at *once' }
+        { top: 450, left: 280, text: 'all *at *once' }
     ]
 ];
 

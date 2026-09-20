@@ -413,7 +413,33 @@ body.light {
     left: 14px;  
 }
 
+.poem-word[data-id="s4-l2-w2"] {
+    position: relative; 
+    bottom: -8px;
+    left: 6px;  
+}
+
 .poem-word[data-id="s4-l2-w3"] {
     position: relative; 
-    bottom: -5px;
+    left: 20px;  
+}
+
+.poem-word[data-id="s4-l2-w4"] {
+    position: relative; 
+    left: 22px;  
+}
+
+.poem-word[data-id="s5-l1-w2"] {
+    position: relative; 
+    left: 22px;  
+}
+
+.poem-word[data-id="s5-l2-w3"] {
+    position: relative; 
+    left: 42px;  
+}
+
+.poem-word[data-id="s5-l2-w4"] {
+    position: relative; 
+    left: 42px;  
 }
