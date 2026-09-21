@@ -1,3 +1,4 @@
+/* base */
 * {
     box-sizing: border-box;
 }
@@ -8,17 +9,17 @@ html, body {
     width: 100%;
     background-color: black;
     overflow-x: visible;
-    scrollbar-width: none;     
-    -ms-overflow-style: none;   
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar {
+html::-webkit-scrollbar, body::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
 }
 
+/* fonts */
 @font-face {
     font-family: "Ballet";
     src: url("Ballet/Ballet_24pt-Regular.ttf") format("truetype");
@@ -26,6 +27,7 @@ body::-webkit-scrollbar {
     font-style: normal;
 }
 
+/* theme colors */
 body.dark {
     background-color: black;
     --text-color: #ebe9ff;
@@ -40,6 +42,7 @@ body.light {
     --glow-color-60: rgba(96, 88, 137, 0.6);
 }
 
+/* canvas layers */
 #ambientCanvas {
     position: fixed;
     inset: 0;
@@ -49,9 +52,20 @@ body.light {
     pointer-events: none;
 }
 
+.particle-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* verse layout */
 .verse {
     position: relative;
-    height: 280vh; 
+    height: 280vh;
 }
 
 .verse-inner {
@@ -78,7 +92,6 @@ body.light {
     gap: 2px;
 }
 
-
 .frame {
     position: absolute;
     top: 58%;
@@ -89,37 +102,34 @@ body.light {
     transform-origin: center center;
 }
 
-/* ----- Verse 1 ----- */
+/* line positions */
 .pos-v1-l1 { top: 216px; left: 300px; }
 .pos-v1-l2 { top: 369px; left: 450px; }
 .pos-v1-l3 { top: 486px; left: 1054px; }
 .pos-v1-l4 { top: 671px; left: 1350px; }
-
-/* ----- Verse 2 ----- */
 .pos-v2-l1 { top: 130px; left: 134px; }
 .pos-v2-l2 { top: 294px; left: 307px; }
 .pos-v2-l3 { top: 454px; left: 1060px; }
 .pos-v2-l4 { top: 702px; left: 930px; }
 .pos-v2-l5 { top: 732px; left: 447px; }
 
-/* ----- Verse 3 ----- */
 .pos-v3-l1 {
     top: 360px;
     left: 960px;
     transform: translateX(-50%);
 }
 
-/* ----- Verse 4 ----- */
 .pos-v4-l1 { top: 162px; left: 112px; }
 .pos-v4-l2 { top: 238px; left: 324px; }
 .pos-v4-l3 { top: 259px; left: 738px; }
 .pos-v4-l4 { top: 670px; left: 1030px; }
 
+/* word styles */
 .word {
     position: relative;
     color: var(--text-color);
     text-shadow: 0 0 6px var(--glow-color);
-    opacity: 0;                 
+    opacity: 0;
     will-change: opacity;
     display: inline-block;
 }
@@ -143,18 +153,130 @@ body.light {
     font-size: 30pt;
 }
 
-/* ===== PARTICLE CANVAS (dissolve effect) ===== */
-.particle-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 5;
+/* word tweaks: verse 1 */
+#\31\.1 { /* "a" */
+    font-size: 50pt;
 }
 
-/* ===== HOME LOGO (back to landing page) ===== */
+#\31\.2 { /* "flower" */
+    position: relative;
+    right: -25px;
+}
+
+#\31\.3 { /* "opens," */
+    position: relative;
+    right: -35px;
+    top: -130px;
+}
+
+/* word tweaks: verse 2 */
+#\32\.11 { /* "first" */
+    position: relative;
+    bottom: -85px;
+}
+
+#\32\.12 { /* "breath," */
+    position: relative;
+    bottom: -85px;
+}
+
+#\32\.13 { /* "woven" */
+    position: relative;
+    right: -2px;
+}
+
+#\32\.16 { /* "you" */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+#\32\.17 { /* "cannot" */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+#\32\.18 { /* "loosen" */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+#\32\.19 { /* "it" */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+#\32\.20 { /* "without" */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+#\32\.21 { /* "unraveling" */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+#\32\.22 { /* "life." */
+    position: relative;
+    bottom: -106px;
+    left: -70px;
+}
+
+/* word tweaks: verse 3 */
+#\33\.1 { /* "So" */
+    left: -15px;
+}
+
+#\33\.2 { /* "the" */
+    left: -15px;
+}
+
+#\33\.4 { /* "was" */
+    left: 15px;
+}
+
+#\33\.5 { /* "never" */
+    left: 15px;
+}
+
+#\33\.6 { /* "how" */
+    left: 15px;
+}
+
+#\33\.7 { /* "to" */
+    left: 15px;
+}
+
+#\33\.8 { /* "escape" */
+    left: 15px;
+}
+
+#\33\.9 { /* "death," */
+    left: 15px;
+}
+
+/* word tweaks: verse 4 */
+#\34\.10 { /* "and" */
+    position: relative;
+    bottom: -45px;
+}
+
+#\34\.11 { /* "its" */
+    position: relative;
+    right: -45px;
+}
+
+#\34\.12 { /* "shadow." */
+    position: relative;
+    right: -31px;
+}
+
+/* home logo */
 #homeNav {
     position: fixed;
     top: 20px;
@@ -173,7 +295,7 @@ body.light {
     opacity: 0.7;
 }
 
-/*scroll hint*/
+/* scroll hint */
 #scrollHint {
     position: fixed;
     bottom: 30px;
@@ -186,7 +308,7 @@ body.light {
     z-index: 60;
     pointer-events: none;
     opacity: 1;
-    animation: fadeInOut 2s ease-in-out infinite; 
+    animation: fadeInOut 2s ease-in-out infinite;
     transition: opacity 0.4s ease;
 }
 
@@ -212,7 +334,36 @@ body.light {
     text-shadow: 0 0 3px var(--glow-color-60);
 }
 
-/* THEME TOGGLE */
+/* skip prompt */
+#skipPrompt {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: "ebrima", sans-serif;
+    font-size: 2rem;
+    color: var(--text-color);
+    text-shadow: 0 0 7px var(--glow-color);
+    cursor: pointer;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+
+#skipPrompt.visible {
+    opacity: 1;
+    pointer-events: auto;
+    animation: fadeInOut 2s ease-in-out infinite;
+}
+
+/* keyframes */
+@keyframes fadeInOut {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* theme toggle */
 .theme-toggle-container {
     position: fixed;
     bottom: 30px;
@@ -288,6 +439,7 @@ body.light .toggle-circle {
     opacity: 1;
 }
 
+/* buttons */
 button {
     padding: 8px 10px;
     border: 2px solid #ebe9ff;
@@ -300,128 +452,7 @@ button {
     transition: 0.2s;
 }
 
-#skipPrompt {
-    position: fixed;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: "ebrima", sans-serif;
-    font-size: 2rem;
-    color: var(--text-color);
-    text-shadow: 0 0 7px var(--glow-color);
-    cursor: pointer;
-    z-index: 50;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.6s ease;
-}
-
-#skipPrompt.visible {
-    opacity: 1;
-    pointer-events: auto;
-    animation: fadeInOut 2s ease-in-out infinite;
-}
-
-@keyframes fadeInOut {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* ===== Verse 1 — per-word overrides (10 words) ===== */
-#\31\.1 { /* "a" */ 
-font-size: 50pt;
-}
-
-#\31\.2 { /* "flower" */ 
-    position: relative;
-    right: -25px;
-}
-
-#\31\.3 { /* "opens," */ 
-    position: relative;
-    right: -35px;
-    top: -130px;
-}
-
-#\32\.13 { /* woven */
-    position: relative;
-    right: -2px;
-}
-
-#\32\.11 { /* "first" */ 
-    position: relative;
-    bottom: -85px;
-}
-#\32\.12 { /* "breath," */ 
-    position: relative;
-    bottom: -85px;
-}
-#\32\.16 { /* "you" */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-}
-#\32\.17 { /* "cannot" */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-}
-#\32\.18 { /* "loosen" */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-}
-#\32\.19 { /* "it" */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-}
-#\32\.20 { /* "without" */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-}
-#\32\.21 { /* "unraveling" */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-    
-}
-#\32\.22 { /* "life." */ 
-    position: relative;
-    bottom: -106px;
-    left: -70px;
-}
-
-/* ===== Verse 3 — per-word overrides (9 words) ===== */
-#\33\.1 { /* "So" */
-left: -15px; }
-#\33\.2 { /* "the" */ 
-left: -15px;}
-#\33\.4 { /* "was" */ 
-left: 15px;}
-#\33\.5 { /* "never" */ 
-left: 15px;}
-#\33\.6 { /* "how" */ 
-left: 15px;}
-#\33\.7 { /* "to" */ 
-left: 15px;}
-#\33\.8 { /* "escape" */ 
-left: 15px;}
-#\33\.9 { /* "death," */ 
-left: 15px;}
-
-/* ===== Verse 4 ===== */
-#\34\.10 { /* "and" */ 
-    position: relative;
-    bottom: -45px; }
-#\34\.11 { /* "its" */ 
-    position: relative;
-    right: -45px;}
-#\34\.12 { /* "shadow." */ 
-    position: relative;
-    right: -31px;}
-
+/* responsive */
 @media (max-width: 1550px) and (max-height: 932px) {
     :root {
         --frame-scale: 0.8073;
@@ -430,9 +461,9 @@ left: 15px;}
     .theme-toggle-container {
         bottom: 46px;
         right: 45px;
-     }
+    }
 
     #scrollHint {
-    bottom: 25px;
-}
+        bottom: 25px;
+    }
 }

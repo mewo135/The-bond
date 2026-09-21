@@ -1,6 +1,27 @@
+/* fonts */
+@font-face {
+    font-family: "Ballet";
+    src: url("Ballet/Ballet_24pt-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* base */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: "ebrima", sans-serif; overflow: hidden; }
 
+/* theme colors */
+body {
+    --text-color: #ebe9ff;
+    --glow-color: #ebe9ff;
+}
+
+body.light {
+    --text-color: #605889;
+    --glow-color: #605889;
+}
+
+/* panel */
 .panel {
     position: fixed;
     top: 20px;
@@ -8,7 +29,7 @@ body { font-family: "ebrima", sans-serif; overflow: hidden; }
     background: transparent;
     color: #ebe9ff;
     padding: 20px;
-    border-radius: 0; /* bỏ bo góc theo yêu cầu */
+    border-radius: 0;
     border: 2px solid #ebe9ff;
     z-index: 100;
     width: 390px;
@@ -32,6 +53,7 @@ label {
     opacity: 0.85;
 }
 
+/* color swatches */
 .swatches {
     display: flex;
     gap: 6px;
@@ -55,42 +77,14 @@ body.light .swatch.active {
     border-color: #605889;
 }
 
-/* ===== FLOWER TYPE BUTTONS (daisy / hydrangea / tulip) ===== */
-.type-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px;
-}
-
-.type-btn {
-    padding: 8px 6px;
-    border: 2px solid #ebe9ff;
-    background: transparent;
-    color: #ebe9ff;
-    cursor: pointer;
-    border-radius: 0; /* bỏ bo góc, đồng bộ với panel */
-    font-size: 11px;
-    font-family: "ebrima", sans-serif;
-    transition: 0.2s;
-}
-
-.type-btn:hover { background: #ebe9ff; color: #0a0a0a; }
-.type-btn.active { background: #ebe9ff; color: #0a0a0a; }
-
-body.light .type-btn {
-    border-color: #605889;
-    color: #605889;
-}
-body.light .type-btn:hover { background: #605889; color: #fffaf5; }
-body.light .type-btn.active { background: #605889; color: #fffaf5; }
-
+/* buttons */
 button {
     padding: 8px 10px;
     border: 2px solid #ebe9ff;
     background: transparent;
     color: #ebe9ff;
     cursor: pointer;
-    border-radius: 0; /* bỏ bo góc */
+    border-radius: 0;
     font-size: 12px;
     font-family: "ebrima", sans-serif;
     transition: 0.2s;
@@ -103,11 +97,55 @@ body.light button {
 
 button:hover { background: #ebe9ff; color: #0a0a0a; }
 button.active { background: #ebe9ff; color: #0a0a0a; }
-
 body.light button:hover { background: #605889; color: #fffaf5; }
 body.light button.active { background: #605889; color: #fffaf5; }
 
-/* ===== SIZE SLIDER — custom thumb (nút tròn), khớp ảnh mẫu ===== */
+/* flower type buttons */
+.type-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+}
+
+.type-btn {
+    padding: 8px 6px;
+    border: 2px solid #ebe9ff;
+    background: transparent;
+    color: #ebe9ff;
+    cursor: pointer;
+    border-radius: 0;
+    font-size: 11px;
+    font-family: "ebrima", sans-serif;
+    transition: 0.2s;
+}
+
+.type-btn:hover { background: #ebe9ff; color: #0a0a0a; }
+.type-btn.active { background: #ebe9ff; color: #0a0a0a; }
+
+body.light .type-btn {
+    border-color: #605889;
+    color: #605889;
+}
+
+body.light .type-btn:hover { background: #605889; color: #fffaf5; }
+body.light .type-btn.active { background: #605889; color: #fffaf5; }
+
+/* action buttons */
+.random-btn {
+    width: 100%;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.wide-btn {
+    grid-column: span 2;
+}
+
+/* size slider */
 input[type="range"] {
     width: 100%;
     -webkit-appearance: none;
@@ -123,7 +161,6 @@ body.light input[type="range"] {
     background: #605889;
 }
 
-/* Chrome / Safari / Edge */
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -149,7 +186,6 @@ body.light input[type="range"]::-webkit-slider-thumb {
     );
 }
 
-/* Firefox */
 input[type="range"]::-moz-range-track {
     height: 2px;
     background: #ebe9ff;
@@ -182,22 +218,7 @@ body.light input[type="range"]::-moz-range-thumb {
     );
 }
 
-/* nút bật/tắt random generated — style on/off dùng chung button.active */
-.random-btn {
-    width: 100%;
-}
-
-.action-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-}
-
-.wide-btn {
-    grid-column: span 2;
-}
-
-/* dòng hướng dẫn click tạo hoa */
+/* hint text */
 .hint-text {
     font-size: 12px;
     opacity: 0.7;
@@ -205,7 +226,7 @@ body.light input[type="range"]::-moz-range-thumb {
     margin-top: 4px;
 }
 
-/* title svg lam nav ve homepage */
+/* home logo */
 #homeNav {
     position: fixed;
     top: 20px;
@@ -224,7 +245,7 @@ body.light input[type="range"]::-moz-range-thumb {
     opacity: 0.7;
 }
 
-/* THEME TOGGLE */
+/* theme toggle */
 .theme-toggle-container {
     position: fixed;
     bottom: 25px;
@@ -300,32 +321,7 @@ body.light .toggle-circle {
     opacity: 1;
 }
 
-@media (max-width: 1550px) and (max-height: 932px) {
-     .theme-toggle-container {
-        bottom: 40px;
-        right: 45px;
-     }
-}
-
-
-/* ===== POEM — câu chữ fade in từng dòng, hiện sau khi đủ số hoa ===== */
-@font-face {
-    font-family: "Ballet";
-    src: url("Ballet/Ballet_24pt-Regular.ttf") format("truetype");
-    font-weight: 400;
-    font-style: normal;
-}
-
-body {
-    --text-color: #ebe9ff;
-    --glow-color: #ebe9ff;
-}
-body.light {
-    --text-color: #605889;
-    --glow-color: #605889;
-}
-
-/* Khung 1920x1080 scale theo màn hình (giống opening) để toạ độ px cố định */
+/* poem */
 #poem {
     position: fixed;
     top: 0;
@@ -334,8 +330,8 @@ body.light {
     height: 1080px;
     transform: scale(var(--poem-scale, 1));
     transform-origin: top left;
-    z-index: 2;              /* trên canvas, dưới panel/nav */
-    pointer-events: none;    /* click xuyên qua để vẫn tạo hoa */
+    z-index: 2;
+    pointer-events: none;
 }
 
 .poem-line {
@@ -346,7 +342,6 @@ body.light {
     white-space: nowrap;
 }
 
-/* Mỗi CHỮ tự fade in/out. Thời gian fade (--fade) do JS đặt. */
 .poem-word {
     display: inline-block;
     color: var(--text-color);
@@ -354,99 +349,87 @@ body.light {
     opacity: 0;
     transition: opacity var(--fade, 1.8s) ease-in-out, color 0.3s ease;
 }
+
 .poem-word.show { opacity: 1; }
-
-/* 4 kiểu chữ: regular, regular small, accent, accent small — chỉnh cỡ ở đây */
-.poem-word.regular       { font-family: "ebrima", sans-serif; font-size: 30pt; }
+.poem-word.regular { font-family: "ebrima", sans-serif; font-size: 30pt; }
 .poem-word.regular.small { font-size: 40pt; }
-.poem-word.accent        { font-family: "Ballet", cursive; font-size: 100pt; line-height: 1; }
-.poem-word.accent.small  { font-size: 62pt; }
+.poem-word.accent { font-family: "Ballet", cursive; font-size: 100pt; line-height: 1; }
+.poem-word.accent.small { font-size: 62pt; }
 
-/* ===== Chỉnh riêng TỪNG CHỮ (giống per-word overrides bên opening) =====
-   data-id = s<số câu>-l<số dòng>-w<số chữ>, đều đếm từ 1.
-   Ví dụ: chữ "blooms" là chữ thứ 4 của dòng 1, câu 1:
-
+/* per-word tweaks: data-id = s<sentence>-l<line>-w<word>, all counted from 1 */
 .poem-word[data-id="s1-l1-w4"] {
     position: relative;
-    top: -10px;      // âm = lên, dương = xuống
-    left: 6px;       // âm = sang trái, dương = sang phải
-    font-size: 70pt; // đổi cỡ riêng chữ này
-}
-*/
-
-.poem-word[data-id="s1-l1-w4"] {
-    position: relative;
-    left: 8px;  
+    left: 8px;
 }
 
 .poem-word[data-id="s1-l2-w10"] {
     position: relative;
-    left: 15px;  
+    left: 15px;
 }
 
 .poem-word[data-id="s2-l2-w8"] {
     position: relative;
-    left: 15px;  
+    left: 15px;
     bottom: -8px;
 }
 
 .poem-word[data-id="s3-l1-w5"] {
-    position: relative; 
-    left: 10px;  
+    position: relative;
+    left: 10px;
     bottom: -20px;
 }
 
 .poem-word[data-id="s3-l1-w6"] {
-    position: relative; 
-    left: 15px;  
+    position: relative;
+    left: 15px;
     bottom: -8px;
 }
 
 .poem-word[data-id="s3-l1-w7"] {
-    position: relative; 
-    left: 27px;  
+    position: relative;
+    left: 27px;
     top: -10px;
 }
 
 .poem-word[data-id="s3-l2-w3"] {
-    position: relative; 
-    left: 14px;  
+    position: relative;
+    left: 14px;
 }
 
 .poem-word[data-id="s4-l2-w2"] {
-    position: relative; 
+    position: relative;
     bottom: -8px;
-    left: 6px;  
+    left: 6px;
 }
 
 .poem-word[data-id="s4-l2-w3"] {
-    position: relative; 
-    left: 20px;  
+    position: relative;
+    left: 20px;
 }
 
 .poem-word[data-id="s4-l2-w4"] {
-    position: relative; 
-    left: 23px;  
+    position: relative;
+    left: 23px;
 }
 
 .poem-word[data-id="s5-l1-w2"] {
-    position: relative; 
-    left: 22px;  
+    position: relative;
+    left: 22px;
 }
 
 .poem-word[data-id="s5-l2-w2"] {
-    position: relative; 
-    left: 20px;  
+    position: relative;
+    left: 20px;
 }
 
 .poem-word[data-id="s5-l2-w3"] {
-    position: relative; 
-    left: 38px;  
+    position: relative;
+    left: 38px;
 }
 
 .poem-word[data-id="finale-l1-w4"] {
     position: relative;
-    left: 10px;   
+    left: 10px;
 }
 
 .poem-word[data-id="finale-l1-w5"] {
@@ -458,14 +441,24 @@ body.light {
     position: relative;
     left: 15px;
 }
+
 .poem-word[data-id="outro-l1-w5"] {
     position: relative;
     left: 15px;
 }
 
-/* Dòng lời nhắc "Press E / ENTER" nhấp nháy nhẹ (giống fadeInOut bên opening) */
+/* blink */
 .poem-line.blink { animation: poemBlink 2.4s ease-in-out infinite; }
+
 @keyframes poemBlink {
     0%, 100% { opacity: 1; }
-    50%      { opacity: 0.4; }
+    50% { opacity: 0.4; }
+}
+
+/* responsive */
+@media (max-width: 1550px) and (max-height: 932px) {
+    .theme-toggle-container {
+        bottom: 40px;
+        right: 45px;
+    }
 }

@@ -1,20 +1,23 @@
+// timing and particle config
 const PHASE = {
-    fadeInEnd: 0.80,   
-    holdEnd: 0.85,     
-    dissolveEnd: 1.0  
+    fadeInEnd: 0.80,
+    holdEnd: 0.85,
+    dissolveEnd: 1.0
 };
 
 if (PHASE.fadeInEnd > PHASE.holdEnd) PHASE.holdEnd = PHASE.fadeInEnd;
 
-const REVEAL_OVERLAP = 1.2;    
-const PARTICLE_STEP = 18;       
-const PARTICLE_MAX_DIST = 130; 
-const PARTICLE_COLORS = ["#dc76a3", "#3c6dbb", "#f9ea93", "#8eba98"]; 
+const REVEAL_OVERLAP = 1.2;
+const PARTICLE_STEP = 18;
+const PARTICLE_MAX_DIST = 130;
+const PARTICLE_COLORS = ["#dc76a3", "#3c6dbb", "#f9ea93", "#8eba98"];
 const SCROLL_SMOOTHING = 0.06;
 
+// helpers
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
+// frame scale
 const FRAME_WIDTH = 1920;
 const FRAME_HEIGHT = 1080;
 
@@ -24,12 +27,14 @@ function updateFrameScale() {
     document.documentElement.style.setProperty('--frame-scale', scale);
 }
 
-updateFrameScale(); 
+updateFrameScale();
+
+// word fade and dissolve
 class VerseController {
     constructor(sectionEl) {
         this.section = sectionEl;
         this.inner = sectionEl.querySelector('.verse-inner');
-        this.words = Array.from(sectionEl.querySelectorAll('.word')); 
+        this.words = Array.from(sectionEl.querySelectorAll('.word'));
         this.canvas = sectionEl.querySelector('.particle-canvas');
         this.ctx = this.canvas.getContext('2d');
         this.particles = null;
@@ -56,7 +61,7 @@ class VerseController {
             const rect = word.getBoundingClientRect();
             const style = getComputedStyle(word);
             const relX = rect.left - innerRect.left;
-            const relY = rect.top - innerRect.top + rect.height * 0.82; // approx baseline
+            const relY = rect.top - innerRect.top + rect.height * 0.82;
             sctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
             sctx.fillText(word.textContent, relX, relY);
         });
@@ -72,7 +77,7 @@ class VerseController {
                     pts.push({
                         hx: x, hy: y,
                         dx: Math.cos(angle) * dist * 0.5,
-                        dy: -Math.abs(Math.sin(angle) * dist) - dist * 0.4, 
+                        dy: -Math.abs(Math.sin(angle) * dist) - dist * 0.4,
                         size: 1 + Math.random() * 1.8
                     });
                 }
@@ -80,7 +85,7 @@ class VerseController {
         }
 
         this.particles = pts;
-        this.particleColor = shapeColor; 
+        this.particleColor = shapeColor;
     }
 
     resizeCanvas(w, h) {
@@ -110,7 +115,7 @@ class VerseController {
             return 1;
         } else {
             const dissolveT = (progress - PHASE.holdEnd) / (PHASE.dissolveEnd - PHASE.holdEnd);
-            const TEXT_DROP_FRACTION = 0.25; 
+            const TEXT_DROP_FRACTION = 0.25;
             return lerp(1, 0, clamp01(dissolveT / TEXT_DROP_FRACTION));
         }
     }
@@ -139,7 +144,7 @@ class VerseController {
         if (scatterT <= 0 || !this.particles) return;
 
         ctx.fillStyle = this.particleColor || '#ebe9ff';
-        const alpha = 1 - scatterT; 
+        const alpha = 1 - scatterT;
 
         this.particles.forEach(pt => {
             const x = pt.hx + pt.dx * scatterT;
@@ -155,22 +160,22 @@ class VerseController {
     update() {
         const raw = this.computeRawProgress();
         this.progress = lerp(this.progress, raw, SCROLL_SMOOTHING);
-        // snap once very close, so it doesn't asymptotically creep forever
         if (Math.abs(this.progress - raw) < 0.0008) this.progress = raw;
         this.render();
     }
 }
 
+// ambient sparkles
 const ambientCanvas = document.getElementById('ambientCanvas');
 const actx = ambientCanvas.getContext('2d');
 let ambientDots = [];
 
-const SPARKLE_COUNT = 25;          
+const SPARKLE_COUNT = 25;
 const SPARKLE_MIN_SIZE = 1.5;
 const SPARKLE_MAX_SIZE = 3.5;
-const SPARKLE_MIN_SPEED = 0.15;    
+const SPARKLE_MIN_SPEED = 0.15;
 const SPARKLE_MAX_SPEED = 0.45;
-const SPARKLE_TWINKLE_SPEED = 0.02; 
+const SPARKLE_TWINKLE_SPEED = 0.02;
 
 function resizeAmbient() {
     ambientCanvas.width = window.innerWidth;
@@ -187,7 +192,7 @@ function initAmbient() {
             r: SPARKLE_MIN_SIZE + Math.random() * (SPARKLE_MAX_SIZE - SPARKLE_MIN_SIZE),
             speed: SPARKLE_MIN_SPEED + Math.random() * (SPARKLE_MAX_SPEED - SPARKLE_MIN_SPEED),
             drift: (Math.random() - 0.5) * 0.3,
-            phase: Math.random() * Math.PI * 2, 
+            phase: Math.random() * Math.PI * 2,
             color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)]
         });
     }
@@ -206,7 +211,7 @@ function drawAmbient() {
         }
         const twinkle = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(d.phase));
         actx.globalAlpha = twinkle;
-        actx.fillStyle = d.color; 
+        actx.fillStyle = d.color;
         actx.beginPath();
         actx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
         actx.fill();
@@ -216,8 +221,10 @@ function drawAmbient() {
     requestAnimationFrame(drawAmbient);
 }
 
+// skip prompt
 const skipPrompt = document.getElementById('skipPrompt');
-const NEXT_STAGE_URL = './stage.html'; 
+const NEXT_STAGE_URL = './stage.html';
+
 function checkSkipPromptVisibility() {
     if (!verses.length) return;
     const lastProgress = verses[verses.length - 1].progress;
@@ -239,46 +246,13 @@ skipPrompt.addEventListener('click', () => {
     }
 });
 
+// scroll hint
 const scrollHint = document.getElementById('scrollHint');
 window.addEventListener('scroll', () => {
     scrollHint.classList.toggle('hidden', window.scrollY > 5);
 }, { passive: true });
 
-let verses = [];
-
-function mainLoop() {
-    verses.forEach(v => v.update());
-    checkSkipPromptVisibility();
-    requestAnimationFrame(mainLoop);
-}
-
-async function init() {
-    try {
-        await document.fonts.ready; 
-    } catch (e) {
-    }
-
-    updateFrameScale(); 
-
-    verses = Array.from(document.querySelectorAll('.verse')).map(el => new VerseController(el));
-    verses.forEach(v => v.buildParticles());
-    verses.forEach(v => v.update());
-
-    initAmbient();
-    requestAnimationFrame(drawAmbient);
-    checkSkipPromptVisibility();
-
-    requestAnimationFrame(mainLoop); 
-
-    window.addEventListener('resize', () => {
-        updateFrameScale();
-        resizeAmbient();
-        verses.forEach(v => v.buildParticles());
-        verses.forEach(v => v.update());
-    });
-}
-
-// Theme toggle
+// theme
 const themeToggleEl = document.getElementById('themeToggle');
 const titleNav = document.getElementById('titleNav');
 const body = document.body;
@@ -294,13 +268,48 @@ themeToggleEl.addEventListener('change', () => {
     body.classList.toggle('light', isLight);
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
     updateTitleNav();
-    verses.forEach(v => v.buildParticles()); 
+    verses.forEach(v => v.buildParticles());
     verses.forEach(v => v.update());
 });
 
 function updateTitleNav() {
     const isLight = body.classList.contains('light');
     titleNav.src = isLight ? 'assets/title-light.svg' : 'assets/title.svg';
+}
+
+// main loop and init
+let verses = [];
+
+function mainLoop() {
+    verses.forEach(v => v.update());
+    checkSkipPromptVisibility();
+    requestAnimationFrame(mainLoop);
+}
+
+async function init() {
+    try {
+        await document.fonts.ready;
+    } catch (e) {
+    }
+
+    updateFrameScale();
+
+    verses = Array.from(document.querySelectorAll('.verse')).map(el => new VerseController(el));
+    verses.forEach(v => v.buildParticles());
+    verses.forEach(v => v.update());
+
+    initAmbient();
+    requestAnimationFrame(drawAmbient);
+    checkSkipPromptVisibility();
+
+    requestAnimationFrame(mainLoop);
+
+    window.addEventListener('resize', () => {
+        updateFrameScale();
+        resizeAmbient();
+        verses.forEach(v => v.buildParticles());
+        verses.forEach(v => v.update());
+    });
 }
 
 init();
