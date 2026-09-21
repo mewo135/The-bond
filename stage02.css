@@ -227,8 +227,8 @@ body.light input[type="range"]::-moz-range-thumb {
 /* THEME TOGGLE */
 .theme-toggle-container {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 25px;
+    right: 29px;
     z-index: 102;
 }
 
@@ -302,7 +302,7 @@ body.light .toggle-circle {
 
 @media (max-width: 1550px) and (max-height: 932px) {
      .theme-toggle-container {
-        bottom: 50px;
+        bottom: 40px;
         right: 45px;
      }
 }

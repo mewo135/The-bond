@@ -28,7 +28,7 @@ const SVG_FLOWER_ASSETS = {
 const svgFlowerBuffers = {};
 
 const bgPalettes = {
-    dark: { bg1: '#0f0f0f', bg2: '#0f0f0f', ground: '#1f2a1f' },
+    dark: { bg1: '#000000', bg2: '#000000', ground: '#1f2a1f' },
     light: { bg1: '#fffaf5', bg2: '#fffaf5', ground: '#d4e8d4' }
 };
 let currentTheme = 'dark';
@@ -607,7 +607,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-const MAX_PIXEL_DENSITY = 1.5;
+const MAX_PIXEL_DENSITY = 1;
 
 const PERF_HUD = new URLSearchParams(location.search).has('perf');
 let perfEl = null, perfFrames = 0, perfSince = 0, perfFlowerMs = 0, perfParticleMs = 0;
