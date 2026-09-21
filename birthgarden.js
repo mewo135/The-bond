@@ -140,7 +140,7 @@ async function getOrCreateSvgBuffer(p, kind, colorKey) {
         svgFlowerBuffers[key] = buf;
         return buf;
     } catch (e) {
-        console.log(`SVG ${asset.path} chưa tồn tại hoặc load lỗi (bình thường nếu bạn chưa thêm file):`, e);
+        console.log(`SVG ${asset.path} is missing or failed to load:`, e);
         return null;
     }
 }
