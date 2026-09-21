@@ -223,7 +223,7 @@ function drawAmbient() {
 
 // skip prompt
 const skipPrompt = document.getElementById('skipPrompt');
-const NEXT_STAGE_URL = './stage.html';
+const NEXT_STAGE_URL = './birthgarden.html';
 
 function checkSkipPromptVisibility() {
     if (!verses.length) return;
