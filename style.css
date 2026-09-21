@@ -401,3 +401,21 @@ body.light #daisypink {
      }
 
     }
+
+/* ===== FADE IN TỪ ĐEN khi vào home (stage02 fade out đen -> về đây thì sáng dần) ===== */
+body.landing::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: #000;          /* màu màn phủ */
+    z-index: 99999;
+    pointer-events: none;      /* không chặn click */
+    animation: fadeFromBlack 1200ms ease 150ms both; /* 1200ms = sáng dần, 150ms = chờ một nhịp */
+}
+
+body.light.landing::before { background: #fffaf5; }
+
+@keyframes fadeFromBlack {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}

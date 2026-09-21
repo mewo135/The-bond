@@ -309,28 +309,37 @@ function isMouseOverPanel(mx, my) {
 }
 
 // ================================================================
-// ENDING: bấm E / ENTER -> tất cả hoa tan thành dust -> dust bay về
-// vài điểm -> 2 hoa mới mọc -> hiện "N to grow again / H to return".
+// ENDING: bấm E / ENTER -> tất cả hoa tan thành dust -> mỗi bông cũ
+// cho dust bay về 2 điểm quanh nó -> 2 hoa con mọc (N bông -> 2N bông,
+// tối đa END_MAX_FLOWERS) -> hiện "N to grow again / H to return".
 // Các state: planting -> ready -> dissolving -> growing -> done -> (N) planting
 // ================================================================
 const END_DISSOLVE_STAGGER = 1400; // ms: các bông bắt đầu tan rải rác trong khoảng này
 const END_FLOWER_FADE = 2200;      // ms: mỗi bông mờ hẳn
 const END_DUST_MAX = 1400;         // tổng số hạt dust tối đa lúc tan (chia đều theo số hoa)
-const END_SEED_DUST = 55;          // số hạt dust bay về mỗi điểm mọc hoa mới
+const END_SEED_DUST = 55;          // số hạt dust bay về mỗi hoa con (tối đa; tự giảm khi có nhiều hoa con)
+const END_GATHER_DUST_MAX = 600;   // tổng số hạt dust bay-về tối đa cho cả vườn (chia đều theo số hoa con)
 const END_GATHER = 2600;           // ms: dust bay về điểm mọc
 const END_GROW = 3200;             // ms: hoa mới mọc từ nhỏ -> to
 const END_OUTRO_DELAY = 800;       // ms: nghỉ sau khi hoa mọc xong rồi mới hiện chữ N / H
-// Vị trí 2 hoa mới (tỉ lệ theo màn hình: fx ngang, fy dọc) và cỡ
-const END_SEEDS = [
-    { fx: 0.40, fy: 0.68, size: 1.15 },
-    { fx: 0.60, fy: 0.74, size: 0.95 }
-];
+// ---- Hoa con mọc quanh hoa mẹ ----
+const END_MAX_FLOWERS = 60;        // TRẦN số hoa sau mỗi lần nhân đôi (tránh lag). Vượt trần thì chỉ một phần hoa mẹ có 2 con / 1 con / 0 con
+const END_CHILD_DIST_MIN = 70;     // px: hoa con cách hoa mẹ tối thiểu
+const END_CHILD_DIST_MAX = 140;    // px: ...và tối đa
+const END_CHILD_SIZE_JITTER = 0.15; // cỡ hoa con dao động ±15% quanh cỡ hoa mẹ
+const END_GATHER_LEAD = 600;       // ms: dust bắt đầu bay về sớm hơn lúc hoa mẹ mờ hẳn chừng này -> hoa con mọc nối tiếp, mượt
+const END_CHILD_GROW_JITTER = 300; // ms: lệch nhẹ giữa các hoa con để không nở đồng loạt
 
 let endState = 'planting';
 let endT0 = 0;
 let endDoneAt = Infinity;
 let dust = [];
 let dustLastT = 0;
+let endMothers = [];      // các bông hoa cũ đang tan
+let endMotherCount = 0;   // số hoa cũ lúc bấm E (dùng chia dust)
+let endChildTotal = 0;    // tổng số hoa con sẽ mọc
+let endKidsPending = 0;   // số hoa mẹ đang dựng hoa con (async)
+let endLatestGrow = 0;    // thời điểm hoa con cuối cùng bắt đầu mọc
 
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 function easeInOut(u) { return u * u * (3 - 2 * u); }
@@ -372,7 +381,7 @@ function getFlowerSamples(src, fallbackColors) {
 // Rải dust từ đúng hình dáng bông hoa (tại vị trí/độ xoay hiện tại của nó)
 function spawnDust(f, now) {
     const samples = getFlowerSamples(f.buffer, f.dustColors);
-    const per = Math.max(3, Math.min(28, Math.floor(END_DUST_MAX / Math.max(1, flowers.length))));
+    const per = Math.max(3, Math.min(28, Math.floor(END_DUST_MAX / Math.max(1, endMotherCount))));
 
     const t = mySketch.frameCount * 0.02 + f.floatPhase;
     const cy = f.baseY + Math.sin(t) * f.floatAmp;
@@ -441,46 +450,89 @@ function startEnding() {
     endState = 'dissolving';
     endT0 = performance.now();
     endDoneAt = Infinity;
+    endLatestGrow = 0;
+    endKidsPending = 0;
     poemHideLines(getPoemDom().finale, 1600);
-    flowers.forEach(f => {
+
+    endMothers = flowers.slice();
+    endMotherCount = endMothers.length;
+
+    // Chia số hoa con: tổng = min(2N, trần). Nếu 2N vượt trần thì chọn ngẫu nhiên
+    // những bông mẹ được 2 con, số còn lại được 1 hoặc 0 con.
+    endChildTotal = Math.min(endMotherCount * 2, END_MAX_FLOWERS);
+    if (endMotherCount) {
+        const base = Math.floor(endChildTotal / endMotherCount);
+        const extra = endChildTotal - base * endMotherCount;
+        endMothers.slice().sort(() => Math.random() - 0.5).forEach((m, i) => {
+            m.childCount = base + (i < extra ? 1 : 0);
+        });
+    }
+
+    endMothers.forEach(f => {
         f.dissolveStart = endT0 + Math.random() * END_DISSOLVE_STAGGER;
         f.dustSpawned = false;
+        f.kidsSpawned = false;
+        f.removed = false;
+        delete f.growStart; // hoa con của lượt trước còn growStart -> nếu giữ thì không mờ đi được
     });
 }
 
-// Hoa cũ đã tan hết -> tạo 2 hoa mới + cho dust bay về 2 điểm mọc
-async function beginGather() {
-    endState = 'growing';
-    const oldPos = flowers.map(f => ({ x: f.x, y: f.baseY }));
-    flowers.length = 0;
-    updateFlowerCount();
+function removeFlower(f) {
+    const i = flowers.indexOf(f);
+    if (i >= 0) flowers.splice(i, 1);
+}
 
+// Chọn vị trí hoa con: cách hoa mẹ 70-140px theo hướng `angle`; nếu ra ngoài màn hình
+// hoặc đè lên panel thì thử hướng khác (tối đa 8 lần), cuối cùng thì kẹp vào trong màn hình.
+function pickChildPos(m, angle) {
     const W = window.innerWidth, H = window.innerHeight;
-    const kinds = FLOWER_KINDS.slice().sort(() => Math.random() - 0.5);
-    const seeds = [];
-    for (let i = 0; i < END_SEEDS.length; i++) {
-        const sd = END_SEEDS[i];
-        const kind = kinds[i % kinds.length];
-        const daisyColor = parseInt(pickRandom(Object.keys(flowerTypes)));
-        const svgKey = kind === 'daisy' ? null : pickRandom(Object.keys(SVG_FLOWER_ASSETS[kind]));
-        let f = await buildFlower(kind, daisyColor, svgKey, W * sd.fx, H * sd.fy, sd.size, flowerOrderCounter++);
-        if (!f) f = await buildFlower('daisy', daisyColor, null, W * sd.fx, H * sd.fy, sd.size, flowerOrderCounter++);
-        seeds.push(f);
+    const margin = 50;
+    const panel = document.querySelector('.panel');
+    const pr = panel ? panel.getBoundingClientRect() : null;
+    let x = m.x, y = m.baseY;
+    for (let tries = 0; tries < 8; tries++) {
+        const a = tries === 0 ? angle : Math.random() * Math.PI * 2;
+        const d = END_CHILD_DIST_MIN + Math.random() * (END_CHILD_DIST_MAX - END_CHILD_DIST_MIN);
+        x = m.x + Math.cos(a) * d;
+        y = m.baseY + Math.sin(a) * d;
+        if (x < margin || x > W - margin || y < margin || y > H - margin) continue;
+        if (pr && x > pr.left - 40 && x < pr.right + 40 && y > pr.top - 40 && y < pr.bottom + 40) continue;
+        return { x, y };
     }
+    return { x: Math.max(margin, Math.min(W - margin, x)), y: Math.max(margin, Math.min(H - margin, y)) };
+}
 
-    const t = performance.now();
-    const growAt = t + END_GATHER * 0.55; // hoa bắt đầu mọc khi dust gần tới nơi
-    seeds.forEach(f => {
-        f.growStart = growAt;
+// Hoa mẹ sắp tan hết -> dựng hoa con (cùng loại + màu, cỡ dao động nhẹ) + cho dust
+// từ chỗ hoa mẹ bay về chỗ hoa con.
+async function spawnChildren(m) {
+    const count = m.childCount || 0;
+    if (!count) return;
+
+    const dustPer = Math.max(8, Math.min(END_SEED_DUST, Math.floor(END_GATHER_DUST_MAX / Math.max(1, endChildTotal))));
+    const a0 = Math.random() * Math.PI * 2;
+
+    for (let i = 0; i < count; i++) {
+        // 2 con thì tách về 2 phía gần đối nhau cho vườn thoáng; 1 con thì hướng ngẫu nhiên
+        const angle = a0 + i * Math.PI + (Math.random() - 0.5) * 0.8;
+        const pos = pickChildPos(m, angle);
+        const jitter = 1 + (Math.random() * 2 - 1) * END_CHILD_SIZE_JITTER;
+        const rawSize = Math.max(0.1, Math.min(2, m.rawSize * jitter));
+        const order = flowerOrderCounter++; // gán trước await để giữ đúng thứ tự vẽ
+
+        let f = await buildFlower(m.kind, m.daisyColor, m.svgColorKey, pos.x, pos.y, rawSize, order);
+        if (!f) f = await buildFlower('daisy', m.daisyColor, null, pos.x, pos.y, rawSize, order);
+        if (!f) continue;
+
+        const t = performance.now();
+        f.growStart = t + END_GATHER * 0.55 + Math.random() * END_CHILD_GROW_JITTER; // mọc khi dust gần tới nơi
+        endLatestGrow = Math.max(endLatestGrow, f.growStart);
         flowers.push(f);
 
         const samples = getFlowerSamples(f.buffer, f.dustColors);
-        for (let k = 0; k < END_SEED_DUST; k++) {
-            // dust xuất phát quanh chỗ các bông hoa cũ vừa tan
-            const o = oldPos.length ? oldPos[(Math.random() * oldPos.length) | 0] : { x: W / 2, y: H / 2 };
+        for (let k = 0; k < dustPer; k++) {
             const sm = samples[(Math.random() * samples.length) | 0];
-            const sx = o.x + (Math.random() - 0.5) * 160;
-            const sy = o.y + (Math.random() - 0.5) * 120;
+            const sx = m.x + (Math.random() - 0.5) * 100;
+            const sy = m.baseY + (Math.random() - 0.5) * 80;
             dust.push({
                 x: sx, y: sy,
                 size: 1 + Math.random() * 2,
@@ -495,28 +547,44 @@ async function beginGather() {
                 }
             });
         }
-    });
+    }
     flowers.sort((a, b) => a.order - b.order);
     updateFlowerCount();
-    endDoneAt = growAt + END_GROW + END_OUTRO_DELAY;
 }
 
 function updateEnding(now) {
     if (endState === 'dissolving') {
-        flowers.forEach(f => {
-            if (!f.dustSpawned && now >= f.dissolveStart) {
-                f.dustSpawned = true;
-                spawnDust(f, now);
+        let allDone = true;
+        for (const m of endMothers) {
+            const fadeEnd = m.dissolveStart + END_FLOWER_FADE;
+            if (!m.dustSpawned && now >= m.dissolveStart) {
+                m.dustSpawned = true;
+                spawnDust(m, now);
             }
-        });
-        if (now - endT0 >= END_DISSOLVE_STAGGER + END_FLOWER_FADE) beginGather();
+            // hoa mẹ sắp mờ hẳn -> hoa con của nó bắt đầu hình thành (mọc lan dần, không đồng loạt)
+            if (!m.kidsSpawned && now >= fadeEnd - END_GATHER_LEAD) {
+                m.kidsSpawned = true;
+                endKidsPending++;
+                spawnChildren(m).catch(console.error).finally(() => { endKidsPending--; });
+            }
+            if (!m.removed && now >= fadeEnd) {
+                m.removed = true;
+                removeFlower(m);
+                updateFlowerCount();
+            }
+            if (!m.kidsSpawned || !m.removed) allDone = false;
+        }
+        if (allDone && endKidsPending === 0) {
+            endState = 'growing';
+            endDoneAt = Math.max(endLatestGrow, now) + END_GROW + END_OUTRO_DELAY;
+        }
     } else if (endState === 'growing' && now >= endDoneAt) {
         endState = 'done';
         showOutro();
     }
 }
 
-// N: "grow again" — vườn (2 hoa mới) tiếp tục, chữ chạy lại khi đủ số hoa
+// N: "grow again" — vườn (hoa con) tiếp tục, chữ chạy lại khi đủ số hoa
 function growAgain() {
     endState = 'planting';
     hideOutro();
@@ -535,17 +603,12 @@ document.addEventListener('keydown', (e) => {
     } else if (k === 'n' && endState === 'done') {
         growAgain();
     } else if (k === 'h' && endState === 'done') {
-        window.location.href = 'index.html';
+    goHome();   // trước là: window.location.href = 'index.html';
     }
 });
 
-// Màn retina (Mac) có devicePixelRatio = 2 -> canvas nhiều pixel gấp 4 lần.
-// Hoa vốn đã mềm/blur nên hạ xuống 1 gần như không thấy khác mà nhẹ hơn nhiều.
-// Muốn nét hơn thì tăng (1.5 hoặc 2), muốn nhẹ hơn nữa thì giữ 1.
-const MAX_PIXEL_DENSITY = 1;
+const MAX_PIXEL_DENSITY = 1.5;
 
-// ===== PERF HUD: mở trang với ?perf (vd stage02.html?perf) để xem FPS =====
-// "JS ms" là thời gian JS tốn để ra lệnh vẽ. FPS thấp mà JS ms thấp => nghẽn ở GPU/pixel.
 const PERF_HUD = new URLSearchParams(location.search).has('perf');
 let perfEl = null, perfFrames = 0, perfSince = 0, perfFlowerMs = 0, perfParticleMs = 0;
 
@@ -648,6 +711,11 @@ async function buildFlower(kind, daisyColor, svgColorKey, x, y, rawSize, order) 
         x: x,
         baseY: y, // vị trí gốc; lắc nhẹ quanh baseY mỗi frame
         size: size,
+        // nhớ lại để hoa con thừa hưởng loại / màu / cỡ của hoa mẹ
+        kind: kind,
+        daisyColor: daisyColor,
+        svgColorKey: svgColorKey,
+        rawSize: rawSize,
         buffer: buffer,
         dustColors: dustColors,
         rotation: rotation,
@@ -749,13 +817,13 @@ rebuildColorSwatches();
 
 // ===== POEM: câu chữ hiện TỪNG CHỮ sau khi đủ số hoa (chạy 1 lượt, không loop) =====
 const POEM_THRESHOLD = 10;      // số hoa cần tạo để bắt đầu
-const POEM_START_DELAY = 1500;  // ms chờ trước khi câu đầu tiên hiện
-const POEM_WORD_FADE_IN = 1400; // ms mỗi chữ fade in (càng lớn càng chậm)
-const POEM_WORD_STAGGER = 500;  // ms cách nhau giữa 2 chữ liên tiếp
+const POEM_START_DELAY = 1000;  // ms chờ trước khi câu đầu tiên hiện
+const POEM_WORD_FADE_IN = 900; // ms mỗi chữ fade in (càng lớn càng chậm)
+const POEM_WORD_STAGGER = 400;  // ms cách nhau giữa 2 chữ liên tiếp
 const POEM_LINE_PAUSE = 500;    // ms nghỉ thêm khi xuống dòng mới
-const POEM_HOLD = 4000;         // ms giữ nguyên sau khi chữ cuối hiện xong
+const POEM_HOLD = 2000;         // ms giữ nguyên sau khi chữ cuối hiện xong
 const POEM_FADE_OUT = 3500;     // ms fade out (cả câu cùng mờ, không tan biến)
-const POEM_GAP = 3000;          // ms nghỉ giữa 2 câu
+const POEM_GAP = 1500;          // ms nghỉ giữa 2 câu
 
 // Cú pháp chữ: từ thường = regular | *từ = accent | ~từ = accent small | _từ = regular small
 // top/left tính theo khung 1920x1080 (gốc ở góc trên trái; top tăng = xuống, left tăng = sang phải).
@@ -780,21 +848,20 @@ const POEM_SENTENCES = [
 
     [
         { top: 300, left: 180, text: 'They *happen' },
-        { top: 450, left: 280, text: 'all *at *once' }
+        { top: 400, left: 440, text: 'all *at *once' }
     ]
 ];
 
-// Câu kết sau câu cuối: chữ ở lại, dòng có blink:true nhấp nháy nhẹ. Bấm E / ENTER để bắt đầu kết thúc.
 // data-id của chữ: finale-l<dòng>-w<chữ>
 const POEM_FINALE = [
     { top: 300, left: 180, text: 'Something new has ~taken ~root.' },
-    { top: 400, left: 220, text: "Press E / ENTER when you're ready.", blink: true }
+    { top: 390, left: 220, text: "Press E / ENTER when you're ready.", blink: true }
 ];
 
 // Chữ hiện sau khi 2 hoa mới mọc xong. data-id của chữ: outro-l<dòng>-w<chữ>
 const POEM_OUTRO = [
     { top: 300, left: 180, text: 'Press N to *grow again.' },
-    { top: 440, left: 250, text: 'Press H to return to the beginning.' }
+    { top: 420, left: 400, text: 'Press H to return to the beginning.' }
 ];
 
 let poemStarted = false;
@@ -949,3 +1016,39 @@ function updateTitleNav() {
     const isLight = body.classList.contains('light');
     titleNav.src = isLight ? 'assets/title-light.svg' : 'assets/title.svg';
 }
+
+// ===== Về home: fade out đen rồi mới chuyển trang (home tự fade in từ đen) =====
+const HOME_FADE_MS = 900;   // ms fade out
+let leavingHome = false;
+let homeVeil = null;
+
+function goHome() {
+    if (leavingHome) return;
+    leavingHome = true;
+
+    homeVeil = document.createElement('div');
+    const veilColor = document.body.classList.contains('light') ? '#fffaf5' : '#000'; // theme sáng phủ màu kem
+    homeVeil.style.cssText =
+        'position:fixed;inset:0;background:' + veilColor + ';opacity:0;z-index:1000;' +
+        'transition:opacity ' + HOME_FADE_MS + 'ms ease;';
+    document.body.appendChild(homeVeil);
+    void homeVeil.offsetHeight;      // ép trình duyệt tính style trước để transition chạy
+    homeVeil.style.opacity = '1';
+
+    setTimeout(() => { window.location.href = 'index.html'; }, HOME_FADE_MS);
+}
+
+// Logo góc trên trái cũng đi qua hiệu ứng này
+document.getElementById('homeNav').addEventListener('click', (e) => {
+    e.preventDefault();
+    goHome();
+});
+
+// Bấm Back từ home quay lại stage02 (bfcache) thì gỡ màn đen, không bị kẹt
+window.addEventListener('pageshow', (e) => {
+    if (e.persisted && homeVeil) {
+        homeVeil.remove();
+        homeVeil = null;
+        leavingHome = false;
+    }
+});
