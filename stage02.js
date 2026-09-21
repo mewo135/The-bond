@@ -156,22 +156,107 @@ function getGlowBuffer(p, src) {
     return baked;
 }
 
-function drawFlowerShape(target, cx, cy, size, buffer, rotation, alpha = 1) {
+// gray: 0 = màu gốc, 1 = xám hoàn toàn. Vẽ ĐÚNG 1 lần (kèm filter grayscale) nên viền blur của hoa
+// giữ nguyên suốt quá trình xám. (Trước đây vẽ 2 lớp màu + xám chồng lên nhau: viền blur đậm lên rồi
+// tụt xuống lúc xám xong -> bị khựng.)
+function drawFlowerShape(target, cx, cy, size, buffer, rotation, alpha = 1, gray = 0) {
     const baked = getGlowBuffer(target, buffer);
     const drawSize = baked.width * size;
+    const ctx = target.drawingContext;
 
     target.push();
     target.translate(cx, cy);
     target.rotate(rotation);
     target.imageMode(target.CENTER);
-    if (alpha < 1) {
-        target.drawingContext.globalAlpha = alpha;
-        target.image(baked, 0, 0, drawSize, drawSize);
-        target.drawingContext.globalAlpha = 1;
-    } else {
-        target.image(baked, 0, 0, drawSize, drawSize);
-    }
+    ctx.globalAlpha = alpha;
+    if (gray > 0) ctx.filter = 'grayscale(' + gray + ')';
+    target.image(baked, 0, 0, drawSize, drawSize);
+    if (gray > 0) ctx.filter = 'none';
+    ctx.globalAlpha = 1;
     target.pop();
+}
+
+// ================================================================
+// HÉO: sau khi đủ POEM_THRESHOLD bông, cứ rải rác suốt bài thơ sẽ có 1 bông (chọn ngẫu nhiên)
+// héo dần rồi biến mất. Mỗi bông héo CHẬM và LIỀN MẠCH: các giai đoạn chồng lên nhau
+// trên cùng 1 trục thời gian (không đứt đoạn từng bước).
+//  - Mọi loại hoa (daisy, hydrangea, tulip): hoá xám -> nhỏ lại -> mờ dần.
+// Mỗi lượt (kể cả sau khi bấm N) chạy 1 đợt, cùng lúc với bài thơ.
+// ================================================================
+const WILT_AT_10 = 3;           // vườn 10 bông -> héo 3 bông
+const WILT_AT_20 = 9;           // vườn 20 bông -> héo 9 bông (nội suy tuyến tính theo số hoa, ngoài khoảng đó tăng/giảm cùng độ dốc)
+const WILT_MAX_FRACTION = 0.5;  // nhưng không bao giờ héo quá nửa vườn
+const WILT_KEEP_MIN = 5;        // vườn còn <= chừng này bông khoẻ thì không cho héo thêm
+const WILT_START_DELAY = 4000;  // ms: sau khi đủ hoa, bông đầu tiên được phép bắt đầu héo
+const WILT_SPREAD = 0.9;        // các lần héo được rải đều tới 90% độ dài bài thơ (tính từ lúc đủ hoa)
+const WILT_MS = 10000;          // ms: thời gian héo hoàn toàn của 1 bông (càng lớn càng chậm)
+const WILT_END_SCALE = 0.3;     // cỡ lúc gần biến mất (so với cỡ ban đầu)
+// Cửa sổ của từng giai đoạn, tính theo tỉ lệ 0..1 của WILT_MS (các cửa sổ chồng lên nhau -> mượt)
+const WILT_GRAY_WIN   = [0, 0.3];     // hoá xám
+const WILT_SHRINK_WIN = [0.2, 0.7];     // nhỏ lại (bắt đầu khi đã xám được 20%)
+const WILT_FADE_WIN   = [0.5, 0.7];     // mờ dần, xong đúng lúc biến mất
+
+let wiltQueue = []; // các mốc thời gian (ms) sẽ có 1 bông bắt đầu héo
+
+function smoother(u) { return u * u * u * (u * (u * 6 - 15) + 10); } // ease-in-out mượt hơn smoothstep
+function wiltWin(u, win) { return smoother(clamp01((u - win[0]) / (win[1] - win[0]))); }
+
+// Ước lượng độ dài bài thơ (ms) từ đúng các hằng số POEM_* để rải lịch héo cho khớp
+function estimatePoemMs() {
+    let ms = POEM_START_DELAY;
+    for (const lines of POEM_SENTENCES) {
+        const words = lines.reduce((n, l) => n + l.text.split(' ').filter(Boolean).length, 0);
+        ms += words * POEM_WORD_STAGGER + lines.length * POEM_LINE_PAUSE
+            + POEM_WORD_FADE_IN + POEM_HOLD + POEM_FADE_OUT + POEM_GAP;
+    }
+    return ms;
+}
+
+// Trạng thái héo của 1 bông tại thời điểm `now` -> { gray, scale, alpha } (hệ số nhân lên cỡ / độ mờ gốc)
+function getWilt(f, now) {
+    const u = clamp01((now - f.wiltStart) / WILT_MS);
+    const gray = wiltWin(u, WILT_GRAY_WIN);
+    const shrink = wiltWin(u, WILT_SHRINK_WIN);
+    const fade = wiltWin(u, WILT_FADE_WIN);
+    return { gray, scale: 1 - (1 - WILT_END_SCALE) * shrink, alpha: 1 - fade };
+}
+
+// Lập lịch: k mốc héo rải đều (nhưng ngẫu nhiên trong từng đoạn) suốt bài thơ
+function startWiltWave() {
+    if (endState !== 'planting' && endState !== 'ready') return;
+    const now = performance.now();
+    const n = flowers.length;
+    const slope = (WILT_AT_20 - WILT_AT_10) / 10;
+    const k = Math.max(1, Math.min(Math.floor(n * WILT_MAX_FRACTION), Math.round(WILT_AT_10 + (n - 10) * slope)));
+    const span = Math.max(1000, estimatePoemMs() * WILT_SPREAD - WILT_START_DELAY);
+    wiltQueue = [];
+    for (let i = 0; i < k; i++) {
+        wiltQueue.push(now + WILT_START_DELAY + (i + Math.random()) * span / k);
+    }
+}
+
+// Chạy mỗi frame (độc lập với state ending): tới giờ thì cho 1 bông khoẻ héo; héo xong thì gỡ bông đó
+function updateWilt(now) {
+    while (wiltQueue.length && now >= wiltQueue[0]) {
+        wiltQueue.shift();
+        if (endState !== 'planting' && endState !== 'ready') { wiltQueue.length = 0; break; }
+        // chỉ chọn bông đang khoẻ, và đã mọc xong (hoa con mới mọc chưa được héo ngay)
+        const healthy = flowers.filter(f => f.wiltStart === undefined &&
+            (f.growStart === undefined || now > f.growStart + END_GROW));
+        if (healthy.length <= WILT_KEEP_MIN) continue;
+        const f = healthy[(Math.random() * healthy.length) | 0];
+        f.wiltStart = now;
+        f.wiltEnd = now + WILT_MS;
+    }
+
+    let removed = false;
+    for (let i = flowers.length - 1; i >= 0; i--) {
+        if (flowers[i].wiltEnd !== undefined && now >= flowers[i].wiltEnd) {
+            flowers.splice(i, 1);
+            removed = true;
+        }
+    }
+    if (removed) updateFlowerCount();
 }
 
 // ================================================================
@@ -200,9 +285,17 @@ function drawAllFlowers(p, now) {
             size = f.size * (0.15 + 0.85 * easeOutCubic(g));
             alpha = Math.min(1, g * 1.8);
         }
+        let gray = 0;
+        if (f.wiltStart !== undefined && now >= f.wiltStart) {
+            // đang héo: (xám ->) nhỏ lại -> mờ dần
+            const w = getWilt(f, now);
+            size *= w.scale;
+            alpha *= w.alpha;
+            gray = w.gray;
+        }
         if (alpha <= 0) return;
 
-        drawFlowerShape(p, f.x, f.baseY + floatY, size, f.buffer, f.rotation + floatRot, alpha);
+        drawFlowerShape(p, f.x, f.baseY + floatY, size, f.buffer, f.rotation + floatRot, alpha, gray);
     });
 }
 
@@ -454,7 +547,8 @@ function startEnding() {
     endKidsPending = 0;
     poemHideLines(getPoemDom().finale, 1600);
 
-    endMothers = flowers.slice();
+    wiltQueue.length = 0; // huỷ các lần héo chưa tới giờ
+    endMothers = flowers.filter(f => f.wiltStart === undefined); // hoa đang héo cứ để héo nốt, không sinh con
     endMotherCount = endMothers.length;
 
     // Chia số hoa con: tổng = min(2N, trần). Nếu 2N vượt trần thì chọn ngẫu nhiên
@@ -647,6 +741,7 @@ const sketch = (p) => {
         p.background(bgPalettes[currentTheme].bg1);
         drawFallingPetals();
         updateEnding(now);
+        updateWilt(now);
 
         const t1 = PERF_HUD ? performance.now() : 0;
         drawAllFlowers(p, now); // vẽ trực tiếp mỗi frame (có lắc), không dùng layer tĩnh nữa
@@ -822,8 +917,8 @@ const POEM_WORD_FADE_IN = 900; // ms mỗi chữ fade in (càng lớn càng ch�
 const POEM_WORD_STAGGER = 400;  // ms cách nhau giữa 2 chữ liên tiếp
 const POEM_LINE_PAUSE = 500;    // ms nghỉ thêm khi xuống dòng mới
 const POEM_HOLD = 2000;         // ms giữ nguyên sau khi chữ cuối hiện xong
-const POEM_FADE_OUT = 3500;     // ms fade out (cả câu cùng mờ, không tan biến)
-const POEM_GAP = 1500;          // ms nghỉ giữa 2 câu
+const POEM_FADE_OUT = 1500;     // ms fade out (cả câu cùng mờ, không tan biến)
+const POEM_GAP = 1000;          // ms nghỉ giữa 2 câu
 
 // Cú pháp chữ: từ thường = regular | *từ = accent | ~từ = accent small | _từ = regular small
 // top/left tính theo khung 1920x1080 (gốc ở góc trên trái; top tăng = xuống, left tăng = sang phải).
@@ -976,6 +1071,7 @@ function checkPoem() {
     if (!poemStarted && flowers.length >= POEM_THRESHOLD) {
         poemStarted = true;
         runPoem();
+        startWiltWave(); // đủ hoa -> random vài bông héo
     }
 }
 
