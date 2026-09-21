@@ -183,12 +183,41 @@ function updateTheme() {
   titleImg.src = isLight ? 'assets/title-light.svg' : 'assets/title.svg';
 }
 
-// navigation to next stage
+// ===== Chuyển sang opening: fade phủ màu theo theme rồi mới đổi trang =====
+const LEAVE_FADE_MS = 800;
+let leaving = false;
+let leaveVeil = null;
+
+function goToOpening() {
+  if (leaving) return;                    // chặn bấm/giữ phím nhiều lần
+  leaving = true;
+
+  window.bgm && window.bgm.fadeOut(LEAVE_FADE_MS);   // nhạc mờ cùng lúc (bỏ dòng này nếu chưa dùng audio.js)
+
+  const isLight = document.body.classList.contains('light');
+  leaveVeil = document.createElement('div');
+  leaveVeil.style.cssText =
+    'position:fixed;inset:0;background:' + (isLight ? '#fffaf5' : '#000') + ';' +
+    'opacity:0;z-index:100000;pointer-events:none;' +
+    'transition:opacity ' + LEAVE_FADE_MS + 'ms ease;';
+  document.body.appendChild(leaveVeil);
+
+  // 2 lần rAF để trình duyệt kịp vẽ opacity:0 trước khi chuyển sang 1
+  requestAnimationFrame(() => requestAnimationFrame(() => { leaveVeil.style.opacity = '1'; }));
+
+  setTimeout(() => { window.location.href = './opening.html'; }, LEAVE_FADE_MS + 50);
+}
+
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'e' || event.key === 'E' || event.key === 'Enter') {
-    setTimeout(() => {
-      window.location.href = './opening.html';
-    }, 800);
+  if (event.key === 'e' || event.key === 'E' || event.key === 'Enter') goToOpening();
+});
+document.getElementById('begin').addEventListener('click', goToOpening);   // bấm vào chữ cũng được
+
+// Bấm Back từ opening về (bfcache) thì gỡ lớp phủ, không bị kẹt màn đen
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) {
+    leaving = false;
+    if (leaveVeil) { leaveVeil.remove(); leaveVeil = null; }
   }
 });
 

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://use.typekit.net/exh4qsk.css">
 </head>
 <body class="dark">
+    <script>try { document.body.classList.remove('dark','light'); document.body.classList.add(localStorage.getItem('theme') || 'dark'); } catch (e) {}</script>
     <canvas id="ambientCanvas"></canvas>
 
     <a href="index.html" id="homeNav">
@@ -149,5 +150,6 @@
     <p id="skipPrompt">Press E / Enter when you're ready</p>
 
     <script src="opening.js"></script>
+    <script src="audio.js" data-src="audio/audio1.mp3"></script>
 </body>
 </html>

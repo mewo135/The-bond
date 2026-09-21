@@ -217,7 +217,7 @@ function drawAmbient() {
 }
 
 const skipPrompt = document.getElementById('skipPrompt');
-const NEXT_STAGE_URL = './stage02.html'; 
+const NEXT_STAGE_URL = './stage.html'; 
 function checkSkipPromptVisibility() {
     if (!verses.length) return;
     const lastProgress = verses[verses.length - 1].progress;

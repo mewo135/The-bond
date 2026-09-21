@@ -119,6 +119,7 @@ body.light {
     position: relative;
     color: var(--text-color);
     text-shadow: 0 0 6px var(--glow-color);
+    opacity: 0;                 
     will-change: opacity;
     display: inline-block;
 }

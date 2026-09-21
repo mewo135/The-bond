@@ -156,9 +156,6 @@ function getGlowBuffer(p, src) {
     return baked;
 }
 
-// gray: 0 = màu gốc, 1 = xám hoàn toàn. Vẽ ĐÚNG 1 lần (kèm filter grayscale) nên viền blur của hoa
-// giữ nguyên suốt quá trình xám. (Trước đây vẽ 2 lớp màu + xám chồng lên nhau: viền blur đậm lên rồi
-// tụt xuống lúc xám xong -> bị khựng.)
 function drawFlowerShape(target, cx, cy, size, buffer, rotation, alpha = 1, gray = 0) {
     const baked = getGlowBuffer(target, buffer);
     const drawSize = baked.width * size;
@@ -252,13 +249,6 @@ function updateWilt(now) {
     if (removed) updateFlowerCount();
 }
 
-// ================================================================
-// Hoa BAY LẮC nhẹ liên tục (giống hoa trang trí bên landing) — mỗi
-// frame vẽ lại ở vị trí lắc mới, không bake tĩnh. Nhẹ vì blur đã bake
-// sẵn (getGlowBuffer), mỗi bông chỉ tốn 1 lần image() mỗi frame.
-// `flowers` luôn được giữ đúng thứ tự click (sort 1 lần lúc thêm hoa),
-// nên ở đây chỉ cần vẽ lần lượt: hoa click sau nằm trên cùng.
-// ================================================================
 function drawAllFlowers(p, now) {
     flowers.forEach(f => {
         const t = p.frameCount * 0.02 + f.floatPhase;
@@ -394,12 +384,6 @@ function isMouseOverPanel(mx, my) {
     return mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom;
 }
 
-// ================================================================
-// ENDING: bấm E / ENTER -> tất cả hoa tan thành dust -> mỗi bông cũ
-// cho dust bay về 2 điểm quanh nó -> 2 hoa con mọc (N bông -> 2N bông,
-// tối đa END_MAX_FLOWERS) -> hiện "N to grow again / H to return".
-// Các state: planting -> ready -> dissolving -> growing -> done -> (N) planting
-// ================================================================
 const END_DISSOLVE_STAGGER = 1400; // ms: các bông bắt đầu tan rải rác trong khoảng này
 const END_FLOWER_FADE = 2200;      // ms: mỗi bông mờ hẳn
 const END_DUST_MAX = 1400;         // tổng số hạt dust tối đa lúc tan (chia đều theo số hoa)
@@ -671,12 +655,43 @@ function updateEnding(now) {
     }
 }
 
-// N: "grow again" — vườn (hoa con) tiếp tục, chữ chạy lại khi đủ số hoa
+// G: "grow again" — màn hình tối dần, vườn được xoá sạch rồi sáng lại như lúc mới vào stage02
+const GROW_AGAIN_FADE_MS = 900;  // ms: tối dần / sáng lại
+const GROW_AGAIN_HOLD_MS = 700;  // ms: giữ màn hình trống (đủ cho chữ outro mờ hẳn)
+
+function resetGarden() {
+    flowers.length = 0;
+    dust.length = 0;
+    wiltQueue.length = 0;
+    endMothers = [];
+    endMotherCount = 0;
+    endChildTotal = 0;
+    endKidsPending = 0;
+    endLatestGrow = 0;
+    endDoneAt = Infinity;
+    flowerOrderCounter = 0;
+    poemStarted = false; // đủ POEM_THRESHOLD bông thì bài thơ chạy lại từ đầu
+    updateFlowerCount();
+}
+
 function growAgain() {
-    endState = 'planting';
+    endState = 'resetting'; // chặn click / phím trong lúc chuyển cảnh
     hideOutro();
-    poemStarted = false;
-    checkPoem();
+
+    const veil = document.createElement('div');
+    veil.style.cssText =
+        'position:fixed;inset:0;background:' + bgPalettes[currentTheme].bg1 + ';opacity:0;z-index:1000;' +
+        'pointer-events:none;transition:opacity ' + GROW_AGAIN_FADE_MS + 'ms ease;';
+    document.body.appendChild(veil);
+    void veil.offsetHeight; // ép tính style trước để transition chạy
+    veil.style.opacity = '1';
+
+    setTimeout(() => {
+        resetGarden();
+        endState = 'planting';
+        veil.style.opacity = '0';
+        setTimeout(() => veil.remove(), GROW_AGAIN_FADE_MS);
+    }, GROW_AGAIN_FADE_MS + GROW_AGAIN_HOLD_MS);
 }
 
 document.addEventListener('keydown', (e) => {
@@ -687,7 +702,7 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault(); // tránh Enter kích hoạt nút đang focus (vd nút Random)
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         startEnding();
-    } else if (k === 'n' && endState === 'done') {
+    } else if (k === 'g' && endState === 'done') {
         growAgain();
     } else if (k === 'h' && endState === 'done') {
     goHome();   // trước là: window.location.href = 'index.html';
@@ -942,14 +957,14 @@ const POEM_SENTENCES = [
 
 // data-id của chữ: finale-l<dòng>-w<chữ>
 const POEM_FINALE = [
-    { top: 300, left: 180, text: 'Something new has ~taken ~root.' },
-    { top: 390, left: 220, text: "Press E / ENTER when you're ready.", blink: true }
+    { top: 300, left: 180, text: 'Something new has ~taken ~root' },
+    { top: 390, left: 220, text: "Press E / Enter when you're ready", blink: true }
 ];
 
 // Chữ hiện sau khi 2 hoa mới mọc xong. data-id của chữ: outro-l<dòng>-w<chữ>
 const POEM_OUTRO = [
-    { top: 300, left: 180, text: 'Press N to *grow again.' },
-    { top: 420, left: 400, text: 'Press H to return to the beginning.' }
+    { top: 300, left: 180, text: 'Press G to *grow again' },
+    { top: 420, left: 400, text: 'Press H to return to the beginning' }
 ];
 
 let poemStarted = false;
@@ -1133,7 +1148,6 @@ document.getElementById('homeNav').addEventListener('click', (e) => {
     goHome();
 });
 
-// Bấm Back từ home quay lại stage02 (bfcache) thì gỡ màn đen, không bị kẹt
 window.addEventListener('pageshow', (e) => {
     if (e.persisted && homeVeil) {
         homeVeil.remove();

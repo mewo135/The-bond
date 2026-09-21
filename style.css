@@ -402,7 +402,6 @@ body.light #daisypink {
 
     }
 
-/* ===== FADE IN TỪ ĐEN khi vào home (stage02 fade out đen -> về đây thì sáng dần) ===== */
 body.landing::before {
     content: '';
     position: fixed;
@@ -420,3 +419,20 @@ body.light.landing::before { background: #fffaf5; }
     to   { opacity: 0; }
 }
 
+/* ===== FADE IN từ màn phủ khi vào từ index (đen ở dark, kem ở light) ===== */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 99999;
+    pointer-events: none;
+    animation: fadeFromVeil 1200ms ease 150ms both;
+}
+
+body.light::before { background: #fffaf5; }
+
+@keyframes fadeFromVeil {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
