@@ -176,20 +176,13 @@ function drawFlowerShape(target, cx, cy, size, buffer, rotation, alpha = 1, gray
     target.pop();
 }
 
-// ================================================================
-// HÉO: sau khi đủ POEM_THRESHOLD bông, cứ rải rác suốt bài thơ sẽ có 1 bông (chọn ngẫu nhiên)
-// héo dần rồi biến mất. Mỗi bông héo CHẬM và LIỀN MẠCH: các giai đoạn chồng lên nhau
-// trên cùng 1 trục thời gian (không đứt đoạn từng bước).
-//  - Mọi loại hoa (daisy, hydrangea, tulip): hoá xám -> nhỏ lại -> mờ dần.
-// Mỗi lượt (kể cả sau khi bấm N) chạy 1 đợt, cùng lúc với bài thơ.
-// ================================================================
-const WILT_AT_10 = 3;           // vườn 10 bông -> héo 3 bông
-const WILT_AT_20 = 9;           // vườn 20 bông -> héo 9 bông (nội suy tuyến tính theo số hoa, ngoài khoảng đó tăng/giảm cùng độ dốc)
-const WILT_MAX_FRACTION = 0.5;  // nhưng không bao giờ héo quá nửa vườn
-const WILT_KEEP_MIN = 5;        // vườn còn <= chừng này bông khoẻ thì không cho héo thêm
-const WILT_START_DELAY = 4000;  // ms: sau khi đủ hoa, bông đầu tiên được phép bắt đầu héo
+const WILT_AT_10 = 3;          
+const WILT_AT_20 = 9;          
+const WILT_MAX_FRACTION = 0.5;  
+const WILT_KEEP_MIN = 5;        
+const WILT_START_DELAY = 4000; 
 const WILT_SPREAD = 0.9;        // các lần héo được rải đều tới 90% độ dài bài thơ (tính từ lúc đủ hoa)
-const WILT_MS = 10000;          // ms: thời gian héo hoàn toàn của 1 bông (càng lớn càng chậm)
+const WILT_MS = 8000;         
 const WILT_END_SCALE = 0.3;     // cỡ lúc gần biến mất (so với cỡ ban đầu)
 // Cửa sổ của từng giai đoạn, tính theo tỉ lệ 0..1 của WILT_MS (các cửa sổ chồng lên nhau -> mượt)
 const WILT_GRAY_WIN   = [0, 0.3];     // hoá xám
@@ -916,7 +909,7 @@ const POEM_START_DELAY = 1000;  // ms chờ trước khi câu đầu tiên hiệ
 const POEM_WORD_FADE_IN = 900; // ms mỗi chữ fade in (càng lớn càng chậm)
 const POEM_WORD_STAGGER = 400;  // ms cách nhau giữa 2 chữ liên tiếp
 const POEM_LINE_PAUSE = 500;    // ms nghỉ thêm khi xuống dòng mới
-const POEM_HOLD = 2000;         // ms giữ nguyên sau khi chữ cuối hiện xong
+const POEM_HOLD = 2500;         // ms giữ nguyên sau khi chữ cuối hiện xong
 const POEM_FADE_OUT = 1500;     // ms fade out (cả câu cùng mờ, không tan biến)
 const POEM_GAP = 1000;          // ms nghỉ giữa 2 câu
 
