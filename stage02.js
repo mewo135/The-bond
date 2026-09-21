@@ -156,62 +156,24 @@ function getGlowBuffer(p, src) {
     return baked;
 }
 
-// Bản XÁM của hoa (nướng 1 lần / loại hoa, chỉ khi có bông héo)
-const grayCache = new WeakMap();
-let wiltScratch = null;
-
-function getGrayBuffer(p, src) {
-    let gray = grayCache.get(src);
-    if (gray) return gray;
-    const baked = getGlowBuffer(p, src);
-    gray = p.createGraphics(baked.width, baked.height);
-    gray.pixelDensity(1);
-    const gctx = gray.drawingContext;
-    gctx.filter = 'grayscale(1)';
-    gctx.drawImage(baked.canvas, 0, 0);
-    gctx.filter = 'none';
-    grayCache.set(src, gray);
-    return gray;
-}
-
-// Trộn màu -> xám trên canvas phụ (cộng 'lighter' nên viền blur giữ nguyên độ đậm, không dùng filter mỗi frame)
-function mixGray(p, buffer, baked, gray) {
-    const w = baked.canvas.width, h = baked.canvas.height;
-    if (!wiltScratch) {
-        wiltScratch = document.createElement('canvas');
-        wiltScratch.width = w;
-        wiltScratch.height = h;
-    }
-    const sctx = wiltScratch.getContext('2d');
-    sctx.globalCompositeOperation = 'source-over';
-    sctx.globalAlpha = 1;
-    sctx.clearRect(0, 0, w, h);
-    sctx.globalAlpha = 1 - gray;
-    sctx.drawImage(baked.canvas, 0, 0);
-    sctx.globalCompositeOperation = 'lighter';
-    sctx.globalAlpha = gray;
-    sctx.drawImage(getGrayBuffer(p, buffer).canvas, 0, 0);
-    sctx.globalCompositeOperation = 'source-over';
-    sctx.globalAlpha = 1;
-    return wiltScratch;
-}
-
-// gray: 0 = màu gốc, 1 = xám hoàn toàn
+// gray: 0 = màu gốc, 1 = xám hoàn toàn. Vẽ ĐÚNG 1 lần (kèm filter grayscale) nên viền blur của hoa
+// giữ nguyên suốt quá trình xám. (Trước đây vẽ 2 lớp màu + xám chồng lên nhau: viền blur đậm lên rồi
+// tụt xuống lúc xám xong -> bị khựng.)
 function drawFlowerShape(target, cx, cy, size, buffer, rotation, alpha = 1, gray = 0) {
     const baked = getGlowBuffer(target, buffer);
     const drawSize = baked.width * size;
     const ctx = target.drawingContext;
 
-    let img = baked.canvas;
-    if (gray >= 1) img = getGrayBuffer(target, buffer).canvas;
-    else if (gray > 0) img = mixGray(target, buffer, baked, gray);
-
-    ctx.save();
+    target.push();
+    target.translate(cx, cy);
+    target.rotate(rotation);
+    target.imageMode(target.CENTER);
     ctx.globalAlpha = alpha;
-    ctx.translate(cx, cy);
-    ctx.rotate(rotation);
-    ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
-    ctx.restore();
+    if (gray > 0) ctx.filter = 'grayscale(' + gray + ')';
+    target.image(baked, 0, 0, drawSize, drawSize);
+    if (gray > 0) ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    target.pop();
 }
 
 const WILT_AT_10 = 3;          
@@ -276,9 +238,8 @@ function updateWilt(now) {
             (f.growStart === undefined || now > f.growStart + END_GROW));
         if (healthy.length <= WILT_KEEP_MIN) continue;
         const f = healthy[(Math.random() * healthy.length) | 0];
-        getGrayBuffer(mySketch, f.buffer);
         f.wiltStart = now;
-        f.wiltEnd = now + WILT_MS * WILT_FADE_WIN[1];
+        f.wiltEnd = now + WILT_MS;
     }
 
     let removed = false;
@@ -339,30 +300,6 @@ const PARTICLE_COLORS = [
     [142, 186, 152]
 ];
 
-const particleSprites = {};
-function getParticleSprite(color) {
-    const key = color.join();
-    let c = particleSprites[key];
-    if (c) return c;
-    c = document.createElement('canvas');
-    c.width = c.height = 32;
-    const x = c.getContext('2d');
-    const [r, g, b] = color;
-    const grad = x.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.55)`);
-    grad.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, 0.35)`);
-    grad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, 0.1)`);
-    grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-    x.fillStyle = grad;
-    x.fillRect(0, 0, 32, 32);
-    x.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    x.beginPath();
-    x.arc(16, 16, 4, 0, Math.PI * 2);
-    x.fill();
-    particleSprites[key] = c;
-    return c;
-}
-
 function drawParticles(p) {
     if (p.frameCount % 8 === 0 && particles.length < 30) {
         particles.push({
@@ -375,19 +312,20 @@ function drawParticles(p) {
             color: PARTICLE_COLORS[Math.floor(p.random(PARTICLE_COLORS.length))]
         });
     }
-    const ctx = p.drawingContext;
-    ctx.save();
     for (let i = particles.length - 1; i >= 0; i--) {
-        const part = particles[i];
+        let part = particles[i];
         part.x += part.vx;
         part.y += part.vy;
         part.life -= 1.5;
-        if (part.life <= 0) { particles.splice(i, 1); continue; }
-        const w = 4 * part.size; // sprite 32px ứng với chấm đường kính 8
-        ctx.globalAlpha = part.life / 255;
-        ctx.drawImage(getParticleSprite(part.color), part.x - w / 2, part.y - w / 2, w, w);
+        p.noStroke();
+        const [r, g, b] = part.color;
+        p.drawingContext.shadowBlur = 6;
+        p.drawingContext.shadowColor = `rgba(${r}, ${g}, ${b}, ${part.life / 255})`;
+        p.fill(r, g, b, part.life);
+        p.ellipse(part.x, part.y, part.size);
+        if (part.life <= 0) particles.splice(i, 1);
     }
-    ctx.restore();
+    p.drawingContext.shadowBlur = 0;
 }
 
 // hoa roi
@@ -508,7 +446,7 @@ function getFlowerSamples(src, fallbackColors) {
             for (let x = 0; x < w; x += 5) {
                 const i = (y * w + x) * 4;
                 if (data[i + 3] > 120) {
-                    samples.push({ x, y, css: `rgb(${(data[i] & 0xF0) | 8}, ${(data[i + 1] & 0xF0) | 8}, ${(data[i + 2] & 0xF0) | 8})` });
+                    samples.push({ x, y, css: `rgb(${data[i]}, ${data[i + 1]}, ${data[i + 2]})` });
                 }
             }
         }
@@ -546,32 +484,12 @@ function spawnDust(f, now) {
             vx: (Math.random() - 0.5) * 0.5 + lx * 0.002,
             vy: -(0.2 + Math.random() * 0.8),
             size: 1 + Math.random() * 2,
-            ci: dustColorIndex(sm.css),
+            css: sm.css,
             born: now,
             life: 2800 + Math.random() * 1800,
             phase: Math.random() * Math.PI * 2
         });
     }
-}
-
-// Mỗi màu dust có 1 sprite chấm tròn nhỏ; vẽ theo nhóm màu để đỡ đổi trạng thái canvas
-const dustPaletteIdx = new Map();
-const dustSprites = [];
-const dustBuckets = [];
-function dustColorIndex(css) {
-    let i = dustPaletteIdx.get(css);
-    if (i !== undefined) return i;
-    i = dustSprites.length;
-    dustPaletteIdx.set(css, i);
-    const c = document.createElement('canvas');
-    c.width = c.height = 8;
-    const x = c.getContext('2d');
-    x.fillStyle = css;
-    x.beginPath();
-    x.arc(4, 4, 4, 0, Math.PI * 2);
-    x.fill();
-    dustSprites.push(c);
-    return i;
 }
 
 function drawDust(p, now) {
@@ -580,7 +498,8 @@ function drawDust(p, now) {
     if (!dust.length) return;
     const dtScale = Math.min(3, dt / 16.667); // giữ tốc độ đều trên màn 60Hz / 120Hz
 
-    const active = [];
+    const ctx = p.drawingContext;
+    ctx.save();
     for (let i = dust.length - 1; i >= 0; i--) {
         const d = dust[i];
         let alpha;
@@ -604,24 +523,11 @@ function drawDust(p, now) {
             alpha = Math.pow(1 - age / d.life, 1.3);
         }
 
-        d.a = alpha;
-        let bucket = dustBuckets[d.ci];
-        if (!bucket) bucket = dustBuckets[d.ci] = [];
-        if (!bucket.length) active.push(d.ci);
-        bucket.push(d);
-    }
-
-    const ctx = p.drawingContext;
-    ctx.save();
-    for (const ci of active) {
-        const sprite = dustSprites[ci];
-        const bucket = dustBuckets[ci];
-        for (let k = 0; k < bucket.length; k++) {
-            const d = bucket[k];
-            ctx.globalAlpha = d.a;
-            ctx.drawImage(sprite, d.x - d.size, d.y - d.size, d.size * 2, d.size * 2);
-        }
-        bucket.length = 0;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = d.css;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+        ctx.fill();
     }
     ctx.restore();
 }
@@ -717,7 +623,7 @@ async function spawnChildren(m) {
             dust.push({
                 x: sx, y: sy,
                 size: 1 + Math.random() * 2,
-                ci: dustColorIndex(sm.css),
+                css: sm.css,
                 phase: Math.random() * Math.PI * 2,
                 home: {
                     sx, sy,
@@ -1215,7 +1121,7 @@ function goHome() {
         'position:fixed;inset:0;background:' + veilColor + ';opacity:0;z-index:1000;' +
         'transition:opacity ' + HOME_FADE_MS + 'ms ease;';
     document.body.appendChild(homeVeil);
-    void homeVeil.offsetHeight;      
+    void homeVeil.offsetHeight;      // ép trình duyệt tính style trước để transition chạy
     homeVeil.style.opacity = '1';
 
     setTimeout(() => { window.location.href = 'index.html'; }, HOME_FADE_MS);
@@ -1227,7 +1133,7 @@ document.getElementById('homeNav').addEventListener('click', (e) => {
     goHome();
 });
 
-// Fade out
+// Bấm Back từ home quay lại stage02 (bfcache) thì gỡ màn đen, không bị kẹt
 window.addEventListener('pageshow', (e) => {
     if (e.persisted && homeVeil) {
         homeVeil.remove();
